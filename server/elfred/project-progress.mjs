@@ -1,0 +1,13 @@
+// Project members see agreed work and execution status, never private drafts or model context.
+export function projectProgress(store,user,project){
+ if(!store.role(project.id,user))return [];
+ const slots=store.list('project_slot').filter(s=>s.space===project.id),claims=store.list('claim').filter(c=>c.data.project_id===project.id),stages=store.list('project_stage').filter(s=>s.space===project.id),copies=store.list('copy').filter(c=>c.data.project_id===project.id);
+ return slots.map(slot=>{
+  const agreed=claims.filter(c=>c.data.slot_id===slot.id&&['accepted','needs_reconfirmation'].includes(c.data.status)&&store.role(project.id,c.owner));
+  const participants=agreed.map(claim=>{const copy=copies.filter(c=>c.owner===claim.owner&&c.data.slot_id===slot.id).sort((a,b)=>b.updated.localeCompare(a.updated)||b.created.localeCompare(a.created))[0],task=copy?.data.ai_task_id?store.get(copy.data.ai_task_id):null;
+   const dependencies=(copy?.data.stage_refs||[]).map(ref=>{const stage=store.get(ref.id);return {id:ref.id,title:stage&&store.canRead(user,stage)?stage.data.title:'阶段来源已变化或不可用',version:ref.version,status:!stage||!store.role(project.id,stage.owner)?'unavailable':stage.version!==ref.version||stage.data.status!=='shared'||!store.canRead(user,stage)?'changed':'confirmed',replacement:stage?.data.superseded_by||null};});
+   const status=claim.data.status==='needs_reconfirmation'?'needs_reconfirmation':dependencies.some(d=>d.status!=='confirmed')?'dependency_changed':copy?.data.status==='submitted'?'submitted':task?.data.status||'not_started';
+   return {id:claim.owner,name:store.user(claim.owner)?.name||'成员',status,system:task?.data.system||null,updated:[claim.updated,copy?.updated,task?.updated].filter(Boolean).sort().at(-1),dependencies};});
+  return {id:slot.id,title:slot.data.title,status:slot.data.status,rules_version:slot.version,participants,waiting_on:(slot.data.depends_on||[]).map(id=>{const s=slots.find(s=>s.id===id);return {id,title:s?.data.title||'前置任务不可用',status:s?.data.status||'unavailable'};}),stages:stages.filter(s=>s.data.slot_id===slot.id&&s.data.status==='shared'&&store.role(project.id,s.owner)&&store.canRead(user,s)).map(s=>({id:s.id,title:s.data.title,owner:s.owner,updated:s.updated})),needs_decision:[participants.some(p=>p.status==='needs_reconfirmation')?'参与者重新确认任务约定':'',participants.some(p=>p.status==='dependency_changed')?'下游参与者重新核对阶段依据':'',store.list('contribution').some(c=>c.data.project_id===project.id&&c.data.slot_id===slot.id&&c.data.status==='submitted')?'发起者审核提交':'',!participants.length&&slot.data.status==='open'?'等待认领或审批':''].filter(Boolean).join('；'),updated:slot.updated};
+ });
+}

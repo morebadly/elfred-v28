@@ -1,0 +1,53 @@
+import type { V277AgentId } from "../../v27-7-state";
+
+export type Screen =
+  | {
+      name:
+        | "home"
+        | "agents"
+        | "feed"
+        | "knowledge"
+        | "memory"
+        | "messages"
+        | "profile"
+        | "community"
+        | "settings"
+        | "player"
+        | "highlights"
+        | "profile-edit"
+        | "profile-share"
+        | "search"
+        | "new-task"
+        | "onboarding-chat"
+        | "my-tools"
+        | "inbox";
+    }
+  | { name: "tasks"; view?: "today" | "projects" }
+  | {name:"create-tool";id?:string}
+  | {name:"tool-detail";id:string}
+  | { name: "post"; id: string }
+  | { name: "community-post"; id: string }
+  | { name: "task"; id: string }
+  | { name: "agent"; id: V277AgentId }
+  | { name: "agent-level"; id: V277AgentId }
+  | { name: "daily-brief"; kind: "morning" | "noon" | "evening" }
+  | { name: "agent-moments"; id: V277AgentId }
+  | { name: "agent-moment-detail"; id: V277AgentId; postId: string }
+  | { name: "agent-settings"; id: V277AgentId }
+  | { name: "chat"; id: string; messageId?:string }
+  | { name: "friend-profile"; id: string }
+  | { name: "knowledge-detail"; id: string; anchor?:string }
+  | { name: "memory-detail"; id: string }
+  | {
+      name: "utility";
+      kind:
+        | "tools"
+        | "notifications"
+        | "add-friend"
+        | "ability"
+        | "relationships"
+        | "level"
+        | "honors";
+    };
+
+export type Navigate = (screen: Screen) => void;

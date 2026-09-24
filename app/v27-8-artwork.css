@@ -1,0 +1,26 @@
+/* Original artwork crops: scale every reference to the unchanged 402px phone canvas. */
+.v277-ability-visual{background-image:url('/reference-knowledge.png')!important;background-repeat:no-repeat!important;background-size:402px 834px!important}
+.v277-ability-visual.visual-0{background-position:-14px -201px!important}
+.v277-ability-visual.visual-1{background-position:-141px -201px!important}
+.v277-ability-visual.visual-2{background-position:-270px -201px!important}
+.v277-ability-visual>svg{display:none}
+
+.v277-memory-photo,.v277-relation-photo{background-image:url('/reference-memory.png')!important;background-repeat:no-repeat!important;background-size:402px 882px!important}
+.v277-memory-photo.person-owner{background-position:-243px -355px!important}
+.v277-relation-photo.person-mia{background-position:-29px -600px!important}
+.v277-relation-photo.person-kevin{background-position:-147px -600px!important}
+.v277-relation-photo.person-lena{background-position:-264px -600px!important}
+
+.v277-story-row>button>i,.v277-reference-conversations>button>i{background-image:url('/reference-messages.png')!important;background-repeat:no-repeat!important;background-size:402px 868px!important}
+.v277-story-row .story-me{background-position:-15px -123px!important}
+.v277-story-row .story-lin{background-position:-83px -123px!important}
+.v277-story-row .story-chen{background-position:-150px -123px!important}
+.v277-story-row .story-su{background-position:-218px -123px!important}
+.v277-story-row .story-yi{background-position:-285px -123px!important}
+.v277-story-row .story-xia{background-position:-352px -123px!important}
+.v277-reference-conversations .avatar-group{background-position:-24px -283px!important}
+.v277-reference-conversations .avatar-lin{background-position:-24px -360px!important}
+.v277-reference-conversations .avatar-kevin{background-position:-24px -437px!important}
+.v277-reference-conversations .avatar-aya{background-position:-24px -514px!important}
+.v277-reference-conversations .avatar-du{background-position:-24px -591px!important}
+.v277-reference-conversations .avatar-zhao{background-position:-24px -668px!important}

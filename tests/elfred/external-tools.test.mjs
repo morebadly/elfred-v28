@@ -1,0 +1,22 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {ExternalProvider} from '../../server/elfred/external-provider.mjs';
+import {ModelProvider} from '../../server/elfred/providers.mjs';
+import {Store,id} from '../../server/elfred/store.mjs';
+import {Service} from '../../server/elfred/service.mjs';
+import {Runtime} from '../../server/elfred/runtime.mjs';
+import {authenticate} from '../../server/elfred/auth.mjs';
+const png='iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aH9sAAAAASUVORK5CYII=';
+const searchResult={id:'provider-response',status:'completed',usage:{total_tokens:20},output:[{type:'web_search_call',status:'completed',action:{type:'search'}},{type:'message',content:[{type:'output_text',text:'资料说明与未知项',annotations:[{type:'url_citation',url:'https://example.com/original',title:'原始资料'}]}]}]};
+test('联网接口必须含实际搜索回执、可点击引用和有限调用，不把普通回答当搜索',async()=>{
+ let body;const provider=new ExternalProvider({ELFRED_EXTERNAL_API_KEY:'test-only'},async(url,options)=>{assert.equal(url,'https://api.openai.com/v1/responses');body=JSON.parse(options.body);return new Response(JSON.stringify(searchResult))});const result=await provider.research({goal:'查找公开资料',maxTokens:24000});assert.equal(body.max_tool_calls,1);assert.equal(body.tool_choice,'required');assert.equal(body.store,false);assert.equal(result.citations[0].url,'https://example.com/original');
+ for(const output of [searchResult.output.slice(1),[{type:'web_search_call',status:'failed'},searchResult.output[1]],[searchResult.output[0],{type:'message',content:[{type:'output_text',text:'无来源回答'}]}]]){const invalid=new ExternalProvider({ELFRED_EXTERNAL_API_KEY:'test-only'},async()=>new Response(JSON.stringify({...searchResult,output})));await assert.rejects(invalid.research({goal:'查找',maxTokens:24000}),{code:'PROVIDER_INVALID_OUTPUT'});}
+});
+test('实际图片文件进入私有任务、验收成果和动态；未授权不调用，无Key可恢复',async t=>{
+ const store=new Store(':memory:');t.after(()=>store.close());const calls=[],provider=new ModelProvider({ELFRED_EXTERNAL_API_KEY:'test-only'},async(url,options)=>{calls.push({url,body:JSON.parse(options.body)});return new Response(JSON.stringify({data:[{b64_json:png}],usage:{total_tokens:100}}))}),service=new Service(store,provider),runtime=new Runtime(store,provider),a=authenticate(store,'external-a','test-password-long',true,'甲').user,b=authenticate(store,'external-b','test-password-long',true,'乙').user;service.initialize(a);service.initialize(b);const cmd=(action,input)=>service.command(a.id,id(),action,input),ref=o=>({id:o.id,version:store.get(o.id).version});
+ const task=cmd('external.prepare',{operation:'image_generate',goal:'一张供核对的草图'});await runtime.tick();assert.equal(calls.length,0);assert.throws(()=>cmd('task.confirm',{...ref(task),confirm:true}),{code:'CONSENT_REQUIRED'});cmd('task.confirm',{...ref(task),confirm:true,model_consent:true});cmd('run.start',ref(task));await runtime.tick();assert.equal(calls.length,1);assert.equal(calls[0].body.n,1);assert.equal(calls[0].body.output_format,'png');const run=store.get(store.get(task.id).data.run_id);assert.equal(run.data.status,'awaiting_review');const image=store.get(run.data.receipts[0].attachment_id);assert.ok(image.data.base64);assert.equal(store.canRead(b.id,image),false);assert.equal(service.read(a.id,image.id).data.base64,undefined);cmd('task.accept',{...ref(task),accept:true});assert.equal(store.visible(a.id,'knowledge')[0].data.attachments[0].id,image.id);assert.equal(store.visible(a.id,'feed')[0].data.attachments[0].id,image.id);assert.equal(store.list('post').length,0);
+ const blocked=cmd('external.prepare',{operation:'web_search',goal:'公开资料'});provider.external.key=null;cmd('task.confirm',{...ref(blocked),confirm:true,model_consent:true});cmd('run.start',ref(blocked));await runtime.tick();assert.equal(store.get(blocked.id).data.status,'blocked');assert.equal(store.get(blocked.id).data.units,0);assert.equal(calls.length,1);
+});
+test('图片格式、大小与用量必须有效，预检预算不足不发请求',async()=>{
+ let calls=0;const provider=new ExternalProvider({OPENAI_API_KEY:'test-only'},async()=>{calls++;return new Response(JSON.stringify({data:[{b64_json:Buffer.from('not an image').toString('base64')}],usage:{total_tokens:20}}))});await assert.rejects(provider.image({goal:'图片',maxTokens:50}),{code:'CONTEXT_BUDGET_EXCEEDED'});assert.equal(calls,0);await assert.rejects(provider.image({goal:'图片',maxTokens:24000}),{code:'PROVIDER_INVALID_OUTPUT'});
+});

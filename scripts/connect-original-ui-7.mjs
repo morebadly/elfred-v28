@@ -1,0 +1,9 @@
+import fs from 'node:fs';
+const edit=(path,fn)=>fs.writeFileSync(path,fn(fs.readFileSync(path,'utf8')));
+edit('app/v28/core/runtime-context.tsx',s=>s.replace('tasks:snapshot.objects.task.map(task=>',"tasks:snapshot.objects.task.filter(task=>task.data.status!=='archived').map(task=>"));
+edit('app/v28/legacy/legacy-ui.tsx',s=>s.replace("if(runtime){runtime.report('运行记录保留用于审计；可取消当前运行');return;}","if(runtime&&actual){void runtime.command('task.archive',entityRef(actual)).then(()=>{notify('任务已归档，可在数据设置恢复');onBack()}).catch(()=>{});return;}").replace('<IconButton label="删除任务" onClick={remove}>','<IconButton label={runtime?"归档任务":"删除任务"} onClick={remove}>'));
+edit('app/v28/core/runtime-panels.tsx',s=>s.replace('<p>外部服务密钥仅保存在服务端环境文件中；浏览器不展示密钥。</p>',`<h3>已归档任务</h3>{snapshot.objects.task.filter(item=>item.data.status==='archived').map(item=><div key={item.id}><p>{text(item,'title')}</p><Action run={()=>runtime.command('task.restore',entityRef(item))}>恢复此任务</Action></div>)}<p>外部服务密钥仅保存在服务端环境文件中；浏览器不展示密钥。</p>`));
+edit('app/v28/features/knowledge/knowledge-page.tsx',s=>s.replace('...(runtime.snapshot?.objects.skill||[])','...(runtime.snapshot?.objects.skill||[]),...(runtime.snapshot?.objects.resource||[])').replace('if (event.currentTarget.scrollTop !== 0)','if (!runtime&&event.currentTarget.scrollTop !== 0)').replace('        event.preventDefault();','        if(runtime)return;\n        event.preventDefault();'));
+edit('app/v28/core/runtime-panels.tsx',s=>s.replace('className="v277-app-header"','className="v277-app-head"'));
+edit('app/v28/features/messages/messages-page.tsx',s=>s.replace('<p>✓✓&nbsp; {item.text}</p>','<p>{item.text}</p>').replace('{item.badge && <em>','{Boolean(item.badge) && <em>'));
+edit('app/v28/core/app-shell.tsx',s=>s.replace("status:entityText(entity,'status'),example:entityText(entity,'content')", "status:entityText(entity,'status'),example:entityText(entity,'content')"));

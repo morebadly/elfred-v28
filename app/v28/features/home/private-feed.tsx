@@ -1,0 +1,150 @@
+"use client";
+
+import { useState } from "react";
+import { MoreHorizontal, SlidersHorizontal } from "lucide-react";
+import { agentList } from "../../../v27-7-data";
+import type { V277AgentId } from "../../../v27-7-state";
+import { useRuntime } from "../../core/runtime-context";
+import { localDay } from "../../core/local-day.mjs";
+import { Action } from "../../core/runtime-panels";
+import type { Screen } from "../../core/screen";
+import type { Entity } from "../live/types";
+import { text } from "../live/types";
+import { FeedDetails } from "./feed-details";
+import { InboxSave } from "./inbox-save";
+import { Observations } from "./observations";
+import styles from "./private-feed.module.css";
+
+function readableExcerpt(summary: string, title: string) {
+  if (summary.startsWith("你已验收本次成果")) return "你已验收本次成果。";
+  let candidate = summary.trim();
+  if (/^[\[{]/.test(candidate)) {
+    try {
+      const parsed = JSON.parse(candidate);
+      const first = Array.isArray(parsed) ? parsed[0] : parsed;
+      candidate = typeof first === "string" ? first :
+        typeof first?.excerpt === "string" ? first.excerpt :
+        typeof first?.summary === "string" ? first.summary :
+        typeof first?.text === "string" ? first.text : "";
+    } catch { candidate = ""; }
+  }
+  candidate = candidate.replace(/\s+/g, " ").trim();
+  if (candidate.startsWith(`${title}：`)) candidate = candidate.slice(title.length + 1);
+  return candidate.match(/^.{1,160}?[。！？]/)?.[0] || candidate.slice(0, 160);
+}
+
+export function PrivateFeed({ go, onDrag }: { go: (screen: Screen) => void; onDrag: (value: boolean) => void }) {
+  const runtime = useRuntime()!;
+  const snapshot = runtime.snapshot!;
+  const publishPreferences = snapshot.objects.settings[0]?.data.agent_publish as Record<string, { format?: string; format_version?: number }> | undefined;
+  const topicSettings = (snapshot.objects.settings[0]?.data.feed_topics || {}) as Record<string, {mode?: string; alias?: string; removed?: boolean}>;
+  const [order, setOrder] = useState<"recommended" | "latest">("recommended");
+  const [system, setSystem] = useState("");
+  const [topic, setTopic] = useState("");
+  const [showHidden, setShowHidden] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [menuId, setMenuId] = useState<string | null>(null);
+  const [detailsId, setDetailsId] = useState<string | null>(null);
+  const [mergeInto, setMergeInto] = useState("");
+  const canonicalTopic = (value: string) => topicSettings[value]?.alias || value;
+  const topicOptions = [...new Set(snapshot.objects.feed.map(item => canonicalTopic(text(item, "topic"))).filter(Boolean))].filter(value => !topicSettings[value]?.removed);
+  const managedTopic = topic || topicOptions[0] || "";
+
+  const active = (id: string, kind: string) => snapshot.objects.interaction.some(item =>
+    item.data.object_id === id && item.data.kind === kind && item.data.active,
+  );
+  const score = (item: Entity) => {
+    const age = (Date.now() - Date.parse(item.created)) / 86400000;
+    const task = snapshot.objects.task.find(candidate => candidate.id === item.data.task_id);
+    const affinity = snapshot.objects.feed.filter(candidate =>
+      canonicalTopic(text(candidate,"topic")) === canonicalTopic(text(item,"topic")) && active(candidate.id, "like"),
+    ).length;
+    const reduced = snapshot.objects.feed.some(candidate =>
+      canonicalTopic(text(candidate,"topic")) === canonicalTopic(text(item,"topic")) &&
+      candidate.data.system === item.data.system && active(candidate.id, "less"),
+    );
+    return (task?.data.focus_date === localDay() ? 3 : 0) +
+      (item.data.artifact_id ? 2 : 0) + Math.min(affinity, 2) - age / 7 - (reduced ? 8 : 0) +
+      (topicSettings[canonicalTopic(text(item,"topic"))]?.mode === 'follow' ? 3 : 0) -
+      (topicSettings[canonicalTopic(text(item,"topic"))]?.mode === 'mute' ? 20 : 0);
+  };
+  const items = snapshot.objects.feed.filter(item =>
+    (showHidden || !active(item.id, "hide")) &&
+    (!system || item.data.system === system) &&
+    (!topic || canonicalTopic(text(item,"topic")) === topic),
+  ).sort((a, b) => order === "latest"
+    ? b.created.localeCompare(a.created)
+    : score(b) - score(a) || b.created.localeCompare(a.created));
+
+  return <section className={styles.feed} aria-label="Agent 朋友圈">
+    <header className={styles.sectionHeader}>
+      <h2>Agent 朋友圈</h2>
+      <button type="button" className={styles.filterButton} aria-label="筛选朋友圈" aria-expanded={filtersOpen} onClick={() => setFiltersOpen(!filtersOpen)}>
+        <SlidersHorizontal size={20} />
+      </button>
+    </header>
+    {filtersOpen && <div className={styles.filters}>
+      <div className={styles.sort} role="group" aria-label="朋友圈排序">
+        <button type="button" aria-pressed={order === "recommended"} onClick={() => setOrder("recommended")}>推荐</button>
+        <button type="button" aria-pressed={order === "latest"} onClick={() => setOrder("latest")}>最新</button>
+      </div>
+      <select aria-label="筛选 Agent" value={system} onChange={event => setSystem(event.target.value)}>
+        <option value="">全部 Agent</option>
+        {snapshot.systems.map(agent => <option key={agent.id} value={agent.id}>{agent.name}</option>)}
+      </select>
+      <select aria-label="筛选话题" value={topic} onChange={event => setTopic(event.target.value)}>
+        <option value="">全部话题</option>
+        {topicOptions.map(value => <option key={value}>{value}</option>)}
+      </select>
+      <label><input type="checkbox" checked={showHidden} onChange={event => setShowHidden(event.target.checked)} />含已隐藏</label>
+      <details className={styles.topicManager}><summary>管理话题</summary>{managedTopic&&<><p>{managedTopic} · {topicSettings[managedTopic]?.mode==='follow'?'已关注':topicSettings[managedTopic]?.mode==='mute'?'已静音':'普通'}</p><Action run={()=>runtime.command('feed.topic.set',{topic:managedTopic,mode:topicSettings[managedTopic]?.mode==='follow'?'normal':'follow'})}>关注 / 取消关注</Action><Action run={()=>runtime.command('feed.topic.set',{topic:managedTopic,mode:topicSettings[managedTopic]?.mode==='mute'?'normal':'mute'})}>静音 / 恢复推荐</Action><label>合并到 <select value={mergeInto} onChange={event=>setMergeInto(event.target.value)}><option value="">选择话题</option>{topicOptions.filter(value=>value!==managedTopic).map(value=><option key={value}>{value}</option>)}</select></label><Action disabled={!mergeInto} run={async()=>{await runtime.command('feed.topic.merge',{topic:managedTopic,into:mergeInto});setTopic(mergeInto);setMergeInto('')}}>合并</Action><Action run={async()=>{await runtime.command('feed.topic.remove',{topic:managedTopic});setTopic('')}}>从筛选中移除</Action><small>移除话题不会删除原动态；静音只降低推荐排序，仍可在“最新”中查看。</small></>}</details>
+      <Observations go={go}/>
+    </div>}
+    <div className={styles.list}>
+      {!items.length && <div className={styles.empty}>{system||topic||showHidden?<><p>当前筛选下没有动态。</p><button type="button" onClick={()=>{setSystem('');setTopic('');setShowHidden(false)}}>重置筛选</button></>:<p>这里还没有动态。Agent 的真实发现或你验收的成果，会出现在这里。</p>}</div>}
+      {items.map(item => {
+        const agentId = (item.data.system === "advise" ? "advisor" : item.data.system) as V277AgentId;
+        const agent = agentList.find(candidate => candidate.id === agentId);
+        const Icon = agent?.icon;
+        const summary = text(item, "summary");
+        const excerpt = readableExcerpt(summary, text(item, "title"));
+        const preference=publishPreferences?.[String(item.data.system)];
+        const media = !(preference?.format_version===2&&preference.format === "纯文字")
+          ? ((item.data.attachments || []) as { id: string; mime: string }[])
+            .filter(candidate => /^(image|video)\//.test(candidate.mime) && snapshot.objects.attachment.some(file => file.id === candidate.id)).slice(0,3)
+          : [];
+        return <article key={item.id} className={styles.post} draggable onDragStart={event => {
+          event.dataTransfer.setData("application/x-elfred-content", item.id);
+          onDrag(true);
+        }} onDragEnd={() => onDrag(false)}>
+          <div className={styles.postLayout}>
+            <span className={styles.avatar} aria-hidden="true">{Icon && <Icon size={27} strokeWidth={1.7} />}</span>
+            <div className={styles.postMain}>
+              <header className={styles.postHeader}><b>{agent?.name || "系统"} <span>Agent</span></b></header>
+              <button type="button" className={styles.postContent} onClick={() => setDetailsId(detailsId === item.id ? null : item.id)}>
+                <strong>{text(item, "title")}</strong>
+                {excerpt && <span className={styles.excerpt}>{excerpt}</span>}
+              </button>
+              {media.length>0&&<div className={styles.media}>{media.map(file=>file.mime.startsWith('image/')?<img key={file.id} src={`/api/elfred/attachments/${file.id}`} alt="动态附图" className={styles.thumbnail}/>:<video key={file.id} controls preload="none" src={`/api/elfred/attachments/${file.id}`} className={styles.thumbnail}/>)}</div>}
+              {Boolean(item.data.external_url)&&<a className={styles.sourceLink} href={text(item,"external_url")} target="_blank" rel="noreferrer">查看原始来源 · {text(item,"source_name")||'公开网页'}</a>}
+              <footer className={styles.postFooter}>
+                <time dateTime={item.created}>{new Date(item.created).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time>
+                <button type="button" className={styles.moreButton} aria-label={`${text(item, "title")}的更多操作`} aria-expanded={menuId === item.id} onClick={() => setMenuId(menuId === item.id ? null : item.id)}>
+                  <MoreHorizontal size={24} />
+                </button>
+              </footer>
+            </div>
+          </div>
+          {menuId === item.id && <div className={styles.menu}>
+            <Action run={() => runtime.command("feed.interact", { id: item.id, kind: "like" })}>{active(item.id, "like") ? "取消赞" : "赞"}</Action>
+            <button type="button" onClick={() => { setDetailsId(detailsId === item.id ? null : item.id); setMenuId(null); }}>评论与依据</button>
+            <InboxSave objectId={item.id} go={go} />
+            <Action run={() => runtime.command("feed.interact", { id: item.id, kind: "less" })}>{active(item.id, "less") ? "恢复推荐" : "减少此类"}</Action>
+            <Action run={() => runtime.command("feed.interact", { id: item.id, kind: "hide" })}>{active(item.id, "hide") ? "取消隐藏" : "隐藏动态"}</Action>
+          </div>}
+          {detailsId === item.id && <div className={styles.details}><FeedDetails item={item} go={go} /></div>}
+        </article>;
+      })}
+    </div>
+  </section>;
+}

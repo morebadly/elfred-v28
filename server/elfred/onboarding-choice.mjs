@@ -1,0 +1,49 @@
+import {fail,now} from './store.mjs';
+import {enumeration} from './policy.mjs';
+import {taskCommand} from './runtime.mjs';
+import {alignmentQuestions,alignmentSummary,choiceVersion,firstValueChoices} from '../../app/v28/core/onboarding-choice.mjs';
+
+export function onboardingChoiceCommand(store,user,action,input){
+ if(!action.startsWith('onboarding.choice.'))return null;
+ const session=store.expect(store.owned(user,input.id,'onboarding'),input.version);
+ const data=session.data,answers=data.choice_answers||{};
+ const update=patch=>{const result=store.update(session,{...data,...patch},user);return {id:result.id,version:result.version}};
+ if(action==='onboarding.choice.start')return update({choice_version:choiceVersion,choice_mode:enumeration(input.mode||data.choice_mode||'sequential',['sequential','group'],'引导方式'),choice_started_at:data.choice_started_at||now(),choice_phase:data.choice_phase==='handoff'?'handoff':'questions',choice_step:data.choice_step||0});
+ if(action==='onboarding.choice.mode')return update({choice_mode:enumeration(input.mode,['sequential','group'],'引导方式')});
+ if(action==='onboarding.choice.answer'){
+  const index=alignmentQuestions.findIndex(q=>q.id===input.question_id),question=alignmentQuestions[index];
+  if(!question)fail('INVALID_INPUT','题目不存在');
+  const option=enumeration(input.option,question.options.map(o=>o.id),'选项');
+  return update({choice_version:choiceVersion,choice_answers:{...answers,[question.id]:{option,at:now(),scope:question.agent}},choice_step:data.choice_editing?alignmentQuestions.length:Math.min(index+1,alignmentQuestions.length),choice_phase:data.choice_editing||index+1===alignmentQuestions.length?'summary':'questions',choice_editing:false,choice_confirmed_at:null,choice_summary:null,initial_context:null,initial_boundaries:null});
+ }
+ if(action==='onboarding.choice.step'){
+  if(!Number.isInteger(input.step)||input.step<0||input.step>alignmentQuestions.length)fail('INVALID_INPUT','步骤不存在');
+  return update({choice_step:input.step,choice_editing:input.step<alignmentQuestions.length&&['summary','handoff'].includes(data.choice_phase),choice_phase:input.step===alignmentQuestions.length?'summary':'questions'});
+ }
+ if(action==='onboarding.choice.defer')return update({deferred_at:now(),choice_deferred_at:now()});
+ if(action==='onboarding.choice.confirm'){
+  if(input.confirm!==true)fail('CONFIRMATION_REQUIRED','请核对初始理解卡');
+  const summary=alignmentSummary(answers);
+  return update({intent:summary.find(item=>item.question_id==='need'&&item.certainty==='selected')?.label||'轻量项目方向待确定',choice_summary:summary,choice_confirmed_at:now(),choice_phase:'handoff',initial_context:Object.fromEntries(['owner','explore','advise','create','connect','execute'].map(agent=>[agent,{scope:agent,purpose:'初始化选择形成的初始假设，需在真实使用中核对',items:summary.filter(item=>item.agent===agent),alignment:'insufficient'}])),initial_boundaries:{initiative:answers.initiative?.option||'unsure',external:answers.external?.option||'unsure',external_confirmation_required:true,source_access:'ask_when_needed',cross_agent:'minimum_necessary_with_confirmation'}});
+ }
+ if(action==='onboarding.choice.first'){
+  if(!data.choice_confirmed_at)fail('CONFIRMATION_REQUIRED','请先核对初始理解卡');
+  if(input.confirm!==true)fail('CONFIRMATION_REQUIRED','请确认本次任务使用所示选择摘要');
+  if(data.choice_task_ref)return {id:session.id,version:session.version,task_id:data.choice_task_ref};
+  const option=firstValueChoices.find(o=>o.id===input.task);if(!option)fail('INVALID_INPUT','请选择首个事项');
+  const summary=alignmentSummary(answers).filter(item=>option.questions.includes(item.question_id));
+  const content=summary.map(item=>`${item.question} ${item.label}${item.certainty==='uncertain'?'（尚未确定）':'（初始选择，非稳定事实）'}`).join('\n');
+  const evidence=store.add('document',user,{title:'首个任务的初始化选择',content,provenance_refs:[{id:session.id,version:session.version}],purpose:`本人确认交给${option.system}的最小任务上下文`});
+  const task=taskCommand(store,user,'task.create',{goal:option.goal,constraints:'仅依据已授权的选择资料；用户尚未给出具体领域、个人经历或日程，不得虚构。可提供清晰标注的候选示例，资料不足时列出待确认项。只产出建议或草稿；不联系他人、不发布、不改日程。',system:option.system,mode:'compose',source_refs:[{id:evidence.id,version:evidence.version}]});
+  const createdTask=store.get(task.id);
+  store.update(createdTask,{...createdTask.data,title:option.label},user);
+  const inbox=store.unique('inbox',`${user}:${task.id}`,()=>store.add('inbox',user,{object_id:task.id,task_id:task.id,title:option.label,summary:'初始化的首个待处理事项，等待确认执行',status:'pending',source_refs:[{id:task.id}]}));
+  const result=update({choice_task_ref:task.id,choice_task_answers:answers,first_value_ref:data.first_value_ref||task.id,inbox_ref:inbox.id,choice_task_label:option.label,intent:option.label,status:data.status==='completed'?'completed':'first_value_pending'});
+  return {...result,task_id:task.id};
+ }
+ if(action==='onboarding.choice.home'){
+  if(!data.choice_confirmed_at)fail('CONFIRMATION_REQUIRED','请先核对初始理解卡，或选择稍后继续');
+  return update({status:'completed',completed_at:data.completed_at||now(),choice_phase:'handoff',skipped:[...new Set([...(data.skipped||[]),...(data.choice_task_ref?[]:['first_task_deferred'])])]});
+ }
+ fail('UNKNOWN_COMMAND','不支持的初始化操作');
+}

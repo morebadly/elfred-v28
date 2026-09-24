@@ -1,0 +1,234 @@
+/* V27: one quiet, monochrome mobile language across registration and the app. */
+:root{--ink:#17191b;--muted:#74777c;--faint:#8b8f94;--violet:#555b61;--violet-soft:#eff0f2;--gold:#777e85;--green:#5e816e;--v-bg:#f7f7f8;--v-line:#e9eaec;--v-blue:#56758b;--v-green:#5f7f6e}
+.phone-stage{--v16-ink:#202326;--v16-muted:#757b81;--v16-line:#e8eaed;--v18-ink:#202326;--v18-muted:#757b81;--v18-line:#e8eaed;color:#202326}
+.phone-stage button,.phone-stage a,.phone-stage input,.phone-stage textarea{touch-action:manipulation}
+.phone-stage button:focus-visible,.phone-stage a:focus-visible{outline:2px solid #66849a;outline-offset:3px}
+.phone-stage :is(.screen-content,.detail-page,.v-home,.v-panel,.v-onboarding){color:#202326}
+.phone-stage :is(.screen-content,.detail-page,.v-panel) :is(h1,h2,h3){color:#202326;font-family:inherit;letter-spacing:-.03em}
+.phone-stage :is(.screen-content,.detail-page) :is(h1,h2,h3,strong,b){color:#25292d}
+.phone-stage :is(.screen-content,.detail-page) p{font-size:1rem;line-height:1.75;color:#757b81}
+.phone-stage :is(.screen-content,.detail-page) small{font-size:.75rem;line-height:1.55;color:#848b91}
+.phone-stage :is(.screen-content,.detail-page) input{font-size:1rem;line-height:1.5}
+.phone-stage :is(.detail-header,.topbar,.a2a-fixed-head,.memory-sticky-top){background:#f7f7f8!important;box-shadow:none!important}
+.phone-stage :is(.v-card,.v-form-card,.v-post-card,.r-post-card,.r-brief,.n-review-card,.detail-section,.detail-card,.form-card,.deck-card,.insight-stack-card,.profile-level-card,.profile-honor-grid>button,.identity-generate,.profile-quick-grid>button,.community-post,.schedule-card,.memory-card,.repository-card){background:#fff!important;border:1px solid #e9eaed;border-radius:24px;box-shadow:0 2px 8px #15191e03!important}
+.phone-stage :is(.detail-section,.detail-card,.form-card){padding:20px;margin-top:16px}
+.phone-stage :is(.detail-header h1,.knowledge-switch h1,.messages-fixed-head h1){font-size:1.625rem;line-height:1.4;font-weight:600}
+.phone-stage :is(.icon-button,.round-action,.profile-head-actions button,.deck-tools button,.schedule-back){min-width:40px;min-height:40px;border:1px solid #eceef0;background:#fff;color:#383e44;border-radius:50%;box-shadow:none!important}
+.phone-stage :is(.primary-action,.market-sheet-primary,.utility-primary,.sticky-action,.profile-info-action){min-height:48px;border-radius:99px;font-size:.875rem;background:#191b1e!important;color:#fff!important;box-shadow:none!important}
+.phone-stage :is(.setting-row,.setting-link){min-height:72px;gap:16px;text-decoration:none}
+.phone-stage .setting-link{display:flex;align-items:center;justify-content:space-between;width:100%;color:#434b52}
+.phone-stage :is(.setting-row,.setting-link)>span{display:flex;flex-direction:column;gap:6px}
+.phone-stage :is(.setting-row,.setting-link) strong{font-size:.875rem;font-weight:500}
+.phone-stage :is(.setting-row,.setting-link) small{font-size:.75rem}
+.phone-stage .settings-page .detail-section>h2{font-size:1rem;margin-bottom:12px}
+.phone-stage .build-version{font-size:.75rem;text-align:center;margin-top:24px}
+.phone-stage .tabbar.tabbar-split{height:62px!important;gap:12px!important}
+.phone-stage .tabbar-primary-group{border:1px solid #eeeff1!important;background:#ffffffed!important;padding:6px!important;box-shadow:0 4px 16px #15191e06!important}
+.phone-stage .tabbar button{color:#4b5056!important;height:48px!important}
+.phone-stage .tabbar button.active{background:#f0f1f3!important;color:#17191b!important}
+.phone-stage .tabbar button.active .tab-icon{color:#17191b!important}
+.phone-stage .tabbar .personal-agent-tab{background:#fff!important;color:#17191b!important;border:1px solid #e6e8eb!important;border-radius:50%!important;box-shadow:0 4px 16px #15191e08!important}
+.phone-stage .tabbar .personal-agent-tab .tab-icon{color:#17191b!important;background:none!important;border:0!important}
+/* Home: retain the existing product hierarchy, not the reference app's content. */
+.phone-stage .r-home{padding-inline:20px}
+.phone-stage .r-pull-hint{font-size:.75rem!important;height:36px;border-color:#e6e7e9;color:#878c91}
+.phone-stage .r-topline{margin:12px 0}
+.phone-stage .r-home-tabs button{font-size:1.375rem;min-height:44px}
+.phone-stage .r-task-entry{font-size:.875rem!important;min-height:44px;border-color:#e6e7e9}
+.phone-stage .r-search{height:48px;border-color:#e7e8ea;border-radius:20px;margin-bottom:16px}
+.phone-stage .r-search input::placeholder{font-size:.875rem;color:#8b9298}
+.phone-stage .r-brief{padding:20px}
+.phone-stage .r-brief h1{font-size:1.5rem}
+.phone-stage .r-brief header p{font-size:.8125rem;color:#83898f;line-height:1.65}
+.phone-stage .r-brief-mark{background:#eff0f2;color:#a1a7ad}
+.phone-stage .r-stats{padding:16px 0;background:#f5f5f7}
+.phone-stage .r-stats b{font-size:1.5rem}
+.phone-stage .r-stats span{font-size:.75rem}
+.phone-stage .r-brief-action{margin-top:12px;min-height:44px;font-size:.875rem!important;border-color:#e2e4e7}
+.phone-stage .r-agent-row{margin-top:16px;gap:8px}
+.phone-stage .r-agent-row>button{border-color:#e7e9ec;min-height:96px;border-radius:22px;gap:9px}
+.phone-stage .r-agent-row strong{font-size:.875rem}
+.phone-stage .r-agent-row small{font-size:.75rem!important}
+.phone-stage .r-feed-section{margin-top:24px}
+.phone-stage .r-section-heading{margin:0 0 12px}
+.phone-stage .r-section-heading h2{font-size:1.125rem}
+.phone-stage .r-section-heading>button{font-size:.75rem!important;min-height:40px}
+.phone-stage .r-post-card{padding:20px}
+.phone-stage .r-post-card .v-post-author strong{font-size:.875rem;color:#454a50}
+.phone-stage .r-post-card .v-post-author small{font-size:.75rem!important}
+.phone-stage .r-post-content h3{font-size:1rem;line-height:1.7}
+.phone-stage .r-post-content p{font-size:1rem;color:#7e858c;line-height:1.75}
+.phone-stage .r-post-tag{font-size:.75rem;background:#f0f4f1;color:#698272}
+.phone-stage .r-post-reply{font-size:.8125rem!important;color:#8b9298}
+.phone-stage .r-post-card>footer{padding:16px 0 0;gap:16px}
+.phone-stage .r-post-card>footer>button{min-height:40px;font-size:.8125rem!important;border-color:#e4e6e9}
+.phone-stage .r-demo-note{font-size:.75rem!important;color:#90979d}
+/* Original profile structure: identity, progress, honors, identity card, shortcuts. */
+.phone-stage .profile-world-page{padding:8px 20px 32px!important;background:#f7f7f8!important}
+.phone-stage .profile-head-actions{height:60px;margin-bottom:16px;font-size:1.5rem;color:#23262a;font-weight:600}
+.phone-stage .profile-head-actions>div{gap:8px}
+.phone-stage .profile-identity-hero{grid-template-columns:64px minmax(0,1fr) auto;gap:12px}
+.phone-stage .profile-avatar-photo{width:64px;height:64px;border-radius:24px;background:#e9ebee!important;color:#525961;box-shadow:none!important}
+.phone-stage .profile-avatar-photo span{font-size:1.5rem}
+.phone-stage .profile-avatar-photo i{background:#759783;width:10px;height:10px;border:2px solid #fff;right:0;bottom:2px}
+.phone-stage .profile-name{min-width:0}
+.phone-stage .profile-name h1{font-size:1.375rem;line-height:1.4;overflow-wrap:anywhere}
+.phone-stage .profile-name p{font-size:.75rem;line-height:1.5;margin-top:4px;color:#858c93}
+.phone-stage .profile-edit{min-height:40px;height:auto;padding:8px 10px;border-radius:99px;border:1px solid #e4e6e9;gap:4px;font-size:.75rem;color:#717b84;white-space:nowrap}
+.phone-stage .profile-edit>svg{display:none}
+.phone-stage .profile-counts{grid-column:2/4;margin:0;gap:0}
+.phone-stage .profile-counts button{flex:1;min-width:0;padding:0 8px;gap:4px;border-color:#e0e3e6}
+.phone-stage .profile-counts button:first-child{padding-left:0}
+.phone-stage .profile-counts b{font-size:1.25rem;font-weight:550}
+.phone-stage .profile-counts small{font-size:.75rem;line-height:1.5;white-space:normal;color:#8f979e}
+.phone-stage .profile-level-card{margin-top:24px;min-height:120px;padding:20px;grid-template-columns:44px minmax(0,1fr) 16px;gap:12px}
+.phone-stage .profile-level-card>span{width:44px;height:44px;background:#f2f3f5!important;color:#646f77;border-radius:16px}
+.phone-stage .profile-level-card>div{display:flex;flex-direction:column;gap:8px}
+.phone-stage .profile-level-card small{font-size:.75rem;color:#929aa1}
+.phone-stage .profile-level-card strong{font-size:1rem;line-height:1.5;font-weight:550}
+.phone-stage .profile-level-card i{width:100%;height:4px;background:#edf0f2}
+.phone-stage .profile-level-card i b{background:#789483}
+.phone-stage .profile-level-card em{font-size:.75rem;white-space:normal;line-height:1.6;color:#969da4}
+.phone-stage .profile-level-card>svg{color:#969fa7}
+.phone-stage .profile-honor-section{margin-top:24px}
+.phone-stage .profile-honor-section header{align-items:center}
+.phone-stage .profile-honor-section header small{display:none}
+.phone-stage .profile-honor-section h2{font-size:1.125rem;font-weight:550}
+.phone-stage .profile-honor-section header button{font-size:.75rem;color:#878f97;min-height:40px}
+.phone-stage .profile-honor-grid{gap:8px;margin-top:8px}
+.phone-stage .profile-honor-grid button{height:auto;min-height:108px;padding:12px 4px;border-radius:22px;gap:8px}
+.phone-stage .profile-honor-grid span{width:36px;height:36px;background:#f2f3f5;color:#707e87;border-radius:14px}
+.phone-stage .profile-honor-grid strong{font-size:.75rem;font-weight:500;white-space:normal;color:#636e77}
+.phone-stage .profile-honor-grid small{font-size:.75rem;color:#85998b}
+.phone-stage .identity-generate.compact{min-height:88px;margin-top:24px;padding:16px;grid-template-columns:40px minmax(0,1fr) auto 16px;gap:12px}
+.phone-stage .identity-generate>span{width:40px;height:40px;background:#f0f4f2;color:#6c8a78;border-radius:14px}
+.phone-stage .identity-generate>div{gap:6px}
+.phone-stage .identity-generate strong{font-size:.875rem;font-weight:550}
+.phone-stage .identity-generate small{font-size:.75rem;line-height:1.55;color:#929ba3}
+.phone-stage .identity-generate em{font-size:.75rem;background:#f1f5f2;color:#799080}
+.phone-stage .profile-quick-grid{gap:12px;margin-top:16px}
+.phone-stage .profile-quick-grid button{min-height:84px;padding:14px;grid-template-columns:24px minmax(0,1fr);gap:10px;border-radius:24px;color:#7c8892}
+.phone-stage .profile-quick-grid button>svg:last-child{display:none}
+.phone-stage .profile-quick-grid strong{font-size:.875rem;font-weight:500}
+.phone-stage .profile-quick-grid small{font-size:.75rem;white-space:normal;color:#969fa7}
+/* Shared onboarding typography and restrained form controls. */
+.phone-stage .n-nav{height:60px;padding-inline:24px}
+.phone-stage .n-nav>small{font-size:.75rem!important;color:#858d94}
+.phone-stage .n-account-steps{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 24px 0;flex:none;font-size:.75rem;color:#a0a5ab}
+.n-account-steps>i{flex:1;height:1px;background:#e2e5e8;max-width:24px}
+.n-account-steps .current{color:#30373d}
+.n-account-steps .done{color:#708778}
+.phone-stage .n-body{padding:24px}
+.phone-stage .n-heading{margin:0 0 24px}
+.phone-stage .n-heading h1{font-size:1.625rem;font-weight:600;line-height:1.4}
+.phone-stage .n-heading p{font-size:.875rem;line-height:1.8;color:#7b848b}
+.phone-stage .n-brand-mark{background:#edefef;color:#6d7e73;border-color:#fff;margin-bottom:24px}
+.phone-stage .n-auth-tabs button{font-size:.875rem;min-height:44px}
+.phone-stage .n-onboarding .v-form-card{padding:20px;gap:4px;border:1px solid #eeeff1;border-radius:24px}
+.phone-stage .n-onboarding .v-form-card>label,.phone-stage .n-onboarding .v-form-card>.v-inline-label,.phone-stage .v-specific-field>label{font-size:.875rem;color:#515b63;font-weight:500}
+.phone-stage .n-onboarding .v-form-card>label small{font-size:.75rem!important;color:#929ca4}
+.phone-stage .n-onboarding .v-chips button{min-height:44px;font-size:.875rem!important}
+.phone-stage .n-helper,.phone-stage .n-demo-note{font-size:.75rem!important;line-height:1.75;color:#8b949c}
+.phone-stage .n-helper>.v-text{font-size:.75rem!important;min-height:32px}
+.phone-stage .n-onboarding .n-account-card>.n-agreement{font-size:.75rem;line-height:1.8;margin-top:20px}
+.phone-stage .n-agreement .v-text{font-size:.75rem!important;color:#5e7d92}
+.phone-stage .n-agreement>input{width:18px;height:18px;margin:2px 0 0}
+.n-auth-alternative{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;margin-top:12px;color:#929ba3;font-size:.8125rem}
+.n-auth-alternative>button{border:0;background:none;color:#5d778b;padding:10px 0;min-height:44px;font-size:.875rem}
+.phone-stage .n-contact-input select{width:72px;padding:12px 8px}
+.phone-stage .n-onboarding input:not([type=checkbox]):not([type=file]),.phone-stage .n-onboarding textarea{font-size:1rem}
+.phone-stage .n-contact-input input{width:100%;min-width:0}
+.phone-stage .n-progress{padding:12px 24px 0}
+.phone-stage .n-progress>div{font-size:.75rem}
+.phone-stage .n-footer{padding:16px 24px 20px}
+.phone-stage .n-footer .v-primary{min-height:50px;font-size:.9375rem!important}
+.phone-stage .n-skip{font-size:.8125rem!important;min-height:44px;color:#89939b}
+.phone-stage .n-mode-options strong{font-size:1rem;flex-wrap:wrap}
+.phone-stage .n-mode-options strong>small,.phone-stage .n-mode-options>button>span>small{font-size:.75rem!important}
+.phone-stage .n-mode-options p{font-size:.875rem;color:#7e8992;line-height:1.8}
+.phone-stage .n-mode-options>button{padding:20px;gap:12px}
+.phone-stage .n-quiet-note p{font-size:.75rem;line-height:1.85;color:#8b959d}
+.phone-stage .n-goals button{min-height:48px;font-size:.875rem!important;padding:10px;gap:4px}
+.phone-stage .n-team-list>button{padding:16px;min-height:88px}
+.phone-stage .n-team-list strong{font-size:.9375rem;flex-wrap:wrap;gap:4px 8px}
+.phone-stage .n-team-list strong>small,.phone-stage .n-team-list>button>span>small{font-size:.75rem!important;color:#909ba4}
+.phone-stage .n-advanced summary{font-size:.875rem;min-height:52px}
+.phone-stage .n-advanced summary>span{font-size:.75rem}
+.phone-stage .n-frequency-options strong{font-size:1rem}
+.phone-stage .n-frequency-options small{font-size:.75rem!important;line-height:1.5}
+.phone-stage .n-frequency-options>button{padding:20px;gap:12px}
+.phone-stage .n-review-title h2{font-size:1rem}
+.phone-stage .n-review-title button{font-size:.875rem!important}
+.phone-stage .n-review-card>p,.phone-stage .n-review-row strong,.phone-stage .n-boundary{font-size:.875rem}
+.phone-stage .n-review-row small{font-size:.75rem!important}
+.phone-stage .n-review-agents{gap:6px}
+.phone-stage .n-review-agents strong{font-size:.8125rem}
+.phone-stage .n-review-agents small{font-size:.75rem!important;white-space:normal}
+.phone-stage .n-onboarding .v-file-drop strong{font-size:.875rem}
+.phone-stage .n-onboarding .v-file-drop span{font-size:.75rem}
+.phone-stage .v-avatar{background:#eceff1;color:#6a7781}
+.phone-stage .v-avatar.blue{background:#edf2f5;color:#68869b}
+.phone-stage .v-avatar.green{background:#eef3ef;color:#72917d}
+.phone-stage .v-agent-profile p{font-size:.875rem;line-height:1.75}
+.phone-stage .v-agent-tabs button{min-height:44px;font-size:.875rem}
+.phone-stage .v-panel-body>.v-pills{margin-top:0}
+.phone-stage .v-tag{font-size:.75rem}
+.phone-stage .v-post-author small,.phone-stage .v-post-label{font-size:.75rem!important}
+/* Knowledge, conversations and secondary sheets share the same quiet surfaces. */
+.phone-stage .knowledge-page,.phone-stage .messages-page{padding:12px 20px 32px}
+.phone-stage .knowledge-switch{gap:16px}
+.phone-stage .knowledge-switch button{font-size:1rem;color:#92999f}
+.phone-stage :is(.deck-heading,.fixed-insights-heading) strong{font-size:1rem;font-weight:500}
+.phone-stage .deck-filters{gap:8px;margin:12px 0 20px}
+.phone-stage .deck-filters>button{font-size:.875rem;min-height:40px;padding:8px 14px;border-radius:99px;color:#8a939b;background:#f0f1f3;border-color:transparent}
+.phone-stage .deck-filters>button.active{color:#fff;background:#202428}
+.phone-stage .deck-card{padding:20px;height:auto;min-height:252px;color:#56626b}
+.phone-stage .deck-card-top>b{font-size:.75rem;color:#8a969e}
+.phone-stage .deck-card h3{font-size:1.125rem}
+.phone-stage .deck-card p{font-size:.875rem;line-height:1.8}
+.phone-stage :is(.asset-icon,.deck-emblem){background:#f0f2f4;color:#798b98;border-color:#ebeff2}
+.phone-stage .insight-stack-card{color:#64727d}
+.phone-stage .conversation{padding:20px 16px;min-height:92px;background:#fff;border:1px solid #eceef0;border-radius:24px;margin:0 0 12px;gap:12px}
+.phone-stage .conversation-avatar{background:#f0f2f4;color:#73818b;width:44px;height:44px;border-radius:16px}
+.phone-stage .conversation-avatar i{background:#7f9b8b}
+.phone-stage .conversation-main strong{font-size:.9375rem;color:#424c54}
+.phone-stage .conversation-main small{font-size:.8125rem;color:#969fa7}
+.phone-stage .conversation-meta time{font-size:.75rem;color:#a2aab1}
+.phone-stage .conversation-meta b{background:#eef2f5;color:#708696;font-size:.75rem}
+.phone-stage :is(.pa-chat-message p,.bubble p,.profile-info-intro,.profile-info-rows strong,.friend-pa-sheet p){font-size:1rem;line-height:1.75}
+.phone-stage .pa-chat-message p{color:#737e87;background:#fff;border:1px solid #eceef1}
+.phone-stage .pa-chat-message.user p{background:#edf2f5;color:#607b8e}
+.phone-stage .pa-welcome h3{color:#272d32;font-size:1.5rem}
+.phone-stage .pa-welcome p{color:#8a959e;font-size:.875rem;line-height:1.75}
+.phone-stage .pa-orb{background:#eff1f3;color:#7c8e9b}
+.phone-stage .pa-quick-actions.pa-quick-actions-compact button{min-height:64px;border-radius:22px;border-color:#e9edf0}
+.phone-stage .pa-quick-actions.pa-quick-actions-compact strong{font-size:.875rem;color:#5e6b75}
+.phone-stage .pa-quick-actions.pa-quick-actions-compact span{background:#f2f4f6;color:#7c8f9b}
+.phone-stage .pa-secondary-actions button{font-size:.8125rem;color:#929da6;min-height:40px}
+.phone-stage .pa-composer-full input{font-size:1rem!important}
+.phone-stage .pa-composer-full button{background:#f2f4f6;color:#7d8f9d}
+.phone-stage .pa-composer-full button.active{background:#22292e;color:#fff}
+.phone-stage .community-tabs button{font-size:.875rem;min-height:40px}
+.phone-stage .community-post{margin-top:16px;padding:16px}
+.phone-stage .community-author strong{font-size:.875rem}
+.phone-stage .community-body>b{font-size:1rem;line-height:1.65}
+.phone-stage .community-body>p{font-size:1rem;line-height:1.75}
+.phone-stage .community-actions button{font-size:.75rem;min-height:40px}
+@media(max-width:600px){
+  .phone-stage .n-footer{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  .phone-stage .tabbar.tabbar-split{bottom:calc(12px + env(safe-area-inset-bottom))!important}
+}
+@media(max-width:360px){
+  .phone-stage .r-home,.phone-stage .profile-world-page,.phone-stage .knowledge-page,.phone-stage .messages-page{padding-inline:16px!important}
+  .phone-stage .n-body,.phone-stage .n-nav,.phone-stage .n-footer{padding-inline:16px}
+  .phone-stage .r-brief{padding:16px}
+  .phone-stage .r-brief-mark{width:48px;height:48px}
+  .phone-stage .n-onboarding .v-form-card{padding:16px}
+  .phone-stage .n-goals{grid-template-columns:1fr}
+  .phone-stage .profile-identity-hero{grid-template-columns:52px minmax(0,1fr) auto;gap:10px}
+  .phone-stage .profile-avatar-photo{width:52px;height:52px;border-radius:20px}
+  .phone-stage .profile-name h1{font-size:1.25rem}
+  .phone-stage .profile-honor-grid{gap:6px}
+  .phone-stage .identity-generate.compact{grid-template-columns:36px minmax(0,1fr) 16px;padding:14px}
+  .phone-stage .identity-generate em{display:none}
+}

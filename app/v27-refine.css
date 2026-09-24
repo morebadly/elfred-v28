@@ -1,0 +1,528 @@
+/* V27.2 — disciplined spacing, typography, fixed headers, and usable Elfred chat. */
+.phone-stage{
+  --ui-ink:#202326;
+  --ui-body:#50575e;
+  --ui-muted:#7d858d;
+  --ui-faint:#9ba2a9;
+  --ui-line:#e8eaed;
+  --ui-bg:#f7f7f8;
+  --ui-blue:#5a849a;
+  --ui-green:#6f8f7d;
+  --ui-page-title:24px;
+  --ui-section-title:18px;
+  --ui-body-size:14px;
+  --ui-control-size:14px;
+  --ui-meta-size:12px;
+  --ui-gutter:20px;
+  color:var(--ui-ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  -webkit-text-size-adjust:100%;
+}
+.phone-stage :is(button,input,textarea,select){font-family:inherit}
+.phone-stage :is(.r-home,.community-page,.messages-page,.profile-world-page,.schedule-page,.memory-page){width:100%;padding-left:var(--ui-gutter)!important;padding-right:var(--ui-gutter)!important}
+.phone-stage :is(.topbar h1,.knowledge-switch h1,.messages-fixed-head h1,.profile-name h1,.r-brief h1,.v-panel-title,.repository-head h1,.detail-header h1,.n-onboarding h1){font-size:var(--ui-page-title)!important;line-height:1.35!important;font-weight:650!important;letter-spacing:-.035em;color:var(--ui-ink)!important}
+.phone-stage :is(.r-section-heading h2,.profile-honor-section h2,.schedule-title h2,.compact-section-title strong,.v-section-title,.memory-group h2,.detail-page h2,.v-panel h2){font-size:var(--ui-section-title)!important;line-height:1.45!important;font-weight:600!important;color:var(--ui-ink)!important}
+.phone-stage :is(.r-task-entry,.r-brief-action,.community-tabs button,.v-agent-tabs button,.schedule-mode button){font-size:var(--ui-control-size)!important}
+.phone-stage :is(.r-demo-note,.v-note,.v-subtle,.eyebrow){font-size:var(--ui-meta-size)!important;line-height:1.5!important;color:var(--ui-muted)!important}
+.phone-stage :is(.r-home,.community-page,.messages-page,.profile-world-page,.schedule-page,.memory-page,.knowledge-page) p{color:var(--ui-body)}
+.phone-stage :is(.r-home,.community-page,.messages-page,.profile-world-page,.schedule-page,.memory-page,.knowledge-page) small{color:var(--ui-muted)}
+.phone-stage :is(.r-home,.community-page,.messages-page,.profile-world-page,.schedule-page,.memory-page,.knowledge-page) button{color:inherit}
+.phone-stage :is(.detail-page,.v-panel,.n-onboarding){color:var(--ui-ink)}
+.phone-stage :is(.detail-page,.v-panel,.n-onboarding) p{color:var(--ui-body)}
+.phone-stage :is(.detail-page,.v-panel,.n-onboarding) small{color:var(--ui-muted)}
+.phone-stage :is(.r-post-card,.community-post,.conversation,.memory-card,.action-task-card,.project-card){border-color:var(--ui-line)!important;box-shadow:none!important}
+
+/* Home and community use the same fixed title-bar height and type scale. */
+.phone-stage .r-home-fixed-head{
+  position:sticky;
+  top:0;
+  z-index:30;
+  margin:0 calc(var(--ui-gutter) * -1) 8px;
+  padding:0 var(--ui-gutter) 4px;
+  background:rgba(247,247,248,.96);
+  border-bottom:1px solid rgba(232,234,237,.82);
+  backdrop-filter:blur(18px);
+}
+.phone-stage .r-home-fixed-head .r-pull-hint{margin-bottom:4px}
+.phone-stage .r-home-fixed-head .r-topline{min-height:48px;margin:0}
+.phone-stage .r-home-tabs button,.phone-stage .community-page .a2a-main-tabs button{min-height:44px;font-size:22px!important;line-height:1.35;font-weight:650}
+.phone-stage .community-page{padding-top:0!important}
+.phone-stage .community-page .a2a-fixed-head{
+  position:sticky!important;
+  top:0!important;
+  z-index:30;
+  margin-left:calc(var(--ui-gutter) * -1)!important;
+  margin-right:calc(var(--ui-gutter) * -1)!important;
+  padding:0 var(--ui-gutter) 8px!important;
+  background:rgba(247,247,248,.96)!important;
+  border-bottom:1px solid rgba(232,234,237,.82)!important;
+  backdrop-filter:blur(18px);
+}
+.phone-stage .community-page .a2a-title-row{min-height:52px}
+.phone-stage .community-page .a2a-main-tabs{min-height:48px;gap:24px}
+.phone-stage .community-page .a2a-main-tabs button.active::after,.phone-stage .r-home-tabs button.selected::after{height:3px;background:#2a2e32}
+.phone-stage .community-page .soft-search{margin-top:4px}
+.phone-stage .community-page .community-author strong,.phone-stage .r-post-card h3{font-size:15px!important;line-height:1.5}
+.phone-stage .community-page .community-author small,.phone-stage .community-actions button,.phone-stage .r-post-card small{font-size:12px!important;line-height:1.5}
+.phone-stage .community-page .community-body>b{font-size:16px!important;line-height:1.55}
+.phone-stage .community-page .community-body>p{font-size:14px!important;line-height:1.7}
+
+/* Restore the original home task player above the navigation dock. */
+.phone-stage:has(.v-home) .home-agent-player-fixed{
+  display:grid!important;
+  left:20px;
+  right:20px;
+  bottom:88px;
+  width:auto;
+  height:54px;
+  z-index:26;
+  border:1px solid var(--ui-line);
+  border-radius:20px;
+  background:rgba(255,255,255,.96);
+  box-shadow:0 5px 16px rgba(24,30,35,.06)!important;
+}
+.phone-stage .home-player-copy small{font-size:11px!important;line-height:16px}
+.phone-stage .home-player-copy strong{font-size:13px!important;line-height:18px;color:#39434a}
+.phone-stage .r-home{padding-bottom:180px!important}
+
+/* Knowledge keeps the exact horizontal-card and single-radar composition from the reference. */
+.phone-stage .knowledge-page .sticky-knowledge-bar{
+  position:sticky!important;
+  top:0!important;
+  z-index:30;
+  height:76px!important;
+  background:rgba(247,247,248,.96)!important;
+  border-bottom:1px solid rgba(232,234,237,.82)!important;
+  backdrop-filter:blur(18px);
+  margin-left:calc(var(--ui-gutter) * -1)!important;
+  margin-right:calc(var(--ui-gutter) * -1)!important;
+  padding-left:var(--ui-gutter)!important;
+  padding-right:var(--ui-gutter)!important;
+}
+.phone-stage .knowledge-page .knowledge-switch{gap:16px}
+.phone-stage .knowledge-page .knowledge-switch>button{font-size:16px!important;font-weight:500;color:var(--ui-muted)!important}
+.phone-stage .knowledge-page .deck-heading strong,.phone-stage .knowledge-page .fixed-insights-heading strong{font-size:16px!important;color:var(--ui-ink)!important}
+
+/* Knowledge and memory share one aligned, fixed library header. */
+.phone-stage .memory-page{padding-top:0!important}
+.phone-stage .memory-sticky-top{
+  position:sticky!important;
+  top:0!important;
+  z-index:30;
+  margin:0 calc(var(--ui-gutter) * -1)!important;
+  padding:0 var(--ui-gutter) 1px!important;
+  background:rgba(247,247,248,.96)!important;
+  border-bottom:1px solid rgba(232,234,237,.82)!important;
+  backdrop-filter:blur(18px);
+}
+.phone-stage .memory-sticky-top .knowledge-topbar{height:76px!important}
+.phone-stage .memory-sticky-top .knowledge-switch{gap:16px}
+.phone-stage .memory-sticky-top .knowledge-switch>button{font-size:16px!important;font-weight:500;color:var(--ui-muted)!important}
+.phone-stage .memory-filter button{font-size:14px!important;color:var(--ui-faint)!important}
+.phone-stage .memory-filter button.active{color:var(--ui-ink)!important}
+.phone-stage .memory-overview>span{font-size:12px}
+.phone-stage .memory-overview>p{font-size:16px!important;line-height:1.8}
+.phone-stage .memory-card strong{font-size:16px!important;line-height:1.5}
+.phone-stage .memory-card p{font-size:14px!important;line-height:1.8}
+.phone-stage .memory-card small,.phone-stage .memory-card em{font-size:11px!important;line-height:1.5}
+.phone-stage .repository-head,.phone-stage .messages-fixed-head,.phone-stage .profile-head-actions{
+  position:sticky!important;
+  top:0!important;
+  z-index:30;
+  min-height:64px;
+  background:rgba(247,247,248,.96)!important;
+  border-bottom:1px solid rgba(232,234,237,.82);
+  backdrop-filter:blur(18px);
+}
+.phone-stage .repository-head{margin-left:calc(var(--ui-gutter) * -1);margin-right:calc(var(--ui-gutter) * -1);padding:0 var(--ui-gutter)}
+.phone-stage .messages-fixed-head,.phone-stage .profile-head-actions{margin-left:calc(var(--ui-gutter) * -1);margin-right:calc(var(--ui-gutter) * -1);padding:0 var(--ui-gutter)}
+
+/* V27.3 — knowledge is a single-screen overview; other product surfaces stay unchanged. */
+.phone-stage .app-scroll:has(> .knowledge-page){overflow:hidden;padding-bottom:0}
+.phone-stage .knowledge-page{
+  width:100%;
+  height:100%;
+  min-height:0;
+  overflow:hidden;
+  padding:0 16px 84px!important;
+}
+.phone-stage .knowledge-page .sticky-knowledge-bar{
+  height:68px!important;
+  margin:0 -16px!important;
+  padding:0 16px!important;
+}
+.phone-stage .knowledge-page .knowledge-switch{width:auto;gap:18px}
+.phone-stage .knowledge-page .knowledge-switch h1{font-size:24px!important}
+.phone-stage .knowledge-page .knowledge-switch>button{font-size:16px!important}
+.phone-stage .knowledge-page .header-alignment{transform:scale(.9);transform-origin:right center}
+.phone-stage .knowledge-page .deck-section{margin-top:2px}
+.phone-stage .knowledge-page .deck-heading{min-height:28px}
+.phone-stage .knowledge-page .deck-heading strong,
+.phone-stage .knowledge-page .fixed-insights-heading strong{font-size:15px!important}
+.phone-stage .knowledge-page .deck-tools button{min-width:36px;min-height:36px}
+.phone-stage .knowledge-page .deck-filters{gap:7px;margin:4px 0 0}
+.phone-stage .knowledge-page .deck-filters>button{height:30px;min-height:30px;padding:0 13px;font-size:12px!important}
+.phone-stage .knowledge-page .asset-deck{gap:9px;margin:6px -16px 0;padding:0 16px 3px}
+.phone-stage .knowledge-page .deck-card{
+  width:136px;
+  height:146px;
+  min-height:146px;
+  flex-basis:136px;
+  padding:10px;
+  border-radius:18px;
+}
+.phone-stage .knowledge-page .deck-card-top>b{max-width:104px;font-size:10px!important}
+.phone-stage .knowledge-page .deck-card-top>svg{width:14px;height:14px}
+.phone-stage .knowledge-page .deck-card>.asset-icon{width:30px;height:30px;flex-basis:30px;margin-top:5px;border-radius:10px}
+.phone-stage .knowledge-page .deck-type{margin-top:4px;font-size:10px!important}
+.phone-stage .knowledge-page .deck-card>strong{margin-top:1px;font-size:12px!important}
+.phone-stage .knowledge-page .deck-card>small{margin-top:1px;font-size:10px!important}
+.phone-stage .knowledge-page .deck-score{padding-top:4px}
+.phone-stage .knowledge-page .deck-score>b{font-size:18px!important}
+.phone-stage .knowledge-page .deck-score :is(em,i){font-size:9px!important}
+.phone-stage .knowledge-page .deck-swipe-hint{height:12px;margin-top:0}
+.phone-stage .knowledge-page .deck-swipe-hint small{font-size:10px!important}
+.phone-stage .knowledge-evidence-bridge{margin-top:5px;padding-top:6px}
+.phone-stage .knowledge-bridge-head strong{font-size:12px!important}
+.phone-stage .knowledge-bridge-head button{font-size:10px!important}
+.phone-stage .knowledge-bridge-row{gap:7px;margin-top:4px}
+.phone-stage .knowledge-bridge-row>button{height:42px;padding:5px 8px}
+.phone-stage .knowledge-bridge-row strong{font-size:11px!important}
+.phone-stage .knowledge-bridge-row small{font-size:9px!important}
+.phone-stage .knowledge-bridge-row>button>b{font-size:11px!important}
+.phone-stage .knowledge-page .compact-insights{position:relative;inset:auto;margin:7px 0 0;padding:0;gap:2px}
+.phone-stage .knowledge-page .fixed-insights-heading{min-height:21px}
+.phone-stage .knowledge-page .insight-stack{height:224px}
+.phone-stage .knowledge-page .insight-stack::before,
+.phone-stage .knowledge-page .insight-stack::after{height:194px;border-radius:19px}
+.phone-stage .knowledge-page .insight-stack-card{top:3px;height:204px;min-height:204px;padding:10px 13px;border-radius:20px}
+.phone-stage .knowledge-page .insight-stack-card.is-active{transform:translateY(4px) scale(1)}
+.phone-stage .knowledge-page .insight-head span{font-size:12px!important}
+.phone-stage .knowledge-page .insight-head em{font-size:9px!important}
+.phone-stage .knowledge-page .insight-stack .radar-layout{grid-template-columns:1.12fr .74fr;margin-top:0}
+.phone-stage .knowledge-page .insight-stack .ability-radar{max-height:142px}
+.phone-stage .knowledge-page .radar-labels{font-size:9px}
+.phone-stage .knowledge-page .insight-stack .radar-summary strong{font-size:30px!important}
+.phone-stage .knowledge-page .radar-summary>em{font-size:10px!important}
+.phone-stage .knowledge-page .radar-summary>b{margin-top:5px;font-size:10px!important}
+.phone-stage .knowledge-page .radar-summary>small{margin-top:4px;font-size:9px!important}
+.phone-stage .knowledge-page .insight-switch{right:8px;bottom:0}
+.phone-stage .knowledge-page .insight-switch span{font-size:9px!important}
+
+@media(max-height:760px){
+  .phone-stage .knowledge-page{padding-bottom:78px!important}
+  .phone-stage .knowledge-page .sticky-knowledge-bar{height:60px!important}
+  .phone-stage .knowledge-page .deck-card{height:126px;min-height:126px}
+  .phone-stage .knowledge-page .deck-card>.asset-icon{margin-top:2px}
+  .phone-stage .knowledge-page .deck-type{margin-top:2px}
+  .phone-stage .knowledge-page .knowledge-evidence-bridge{margin-top:2px;padding-top:4px}
+  .phone-stage .knowledge-page .knowledge-bridge-row>button{height:38px}
+  .phone-stage .knowledge-page .compact-insights{margin-top:3px}
+  .phone-stage .knowledge-page .insight-stack{height:190px}
+  .phone-stage .knowledge-page .insight-stack::before,
+  .phone-stage .knowledge-page .insight-stack::after{height:163px}
+  .phone-stage .knowledge-page .insight-stack-card{height:174px;min-height:174px}
+  .phone-stage .knowledge-page .insight-stack .ability-radar{max-height:112px}
+}
+
+/* Action preserves its layout while simplifying its language. */
+.phone-stage .schedule-page{padding-top:0!important;padding-bottom:120px!important}
+.phone-stage .schedule-sticky-head{
+  position:sticky!important;
+  top:0!important;
+  z-index:30;
+  margin-left:calc(var(--ui-gutter) * -1)!important;
+  margin-right:calc(var(--ui-gutter) * -1)!important;
+  padding-left:var(--ui-gutter)!important;
+  padding-right:var(--ui-gutter)!important;
+  background:rgba(247,247,248,.97)!important;
+  border-bottom:1px solid rgba(232,234,237,.82)!important;
+  backdrop-filter:blur(18px);
+}
+.phone-stage .schedule-sticky-head .topbar{height:64px!important}
+.phone-stage .schedule-heading>div{justify-content:center}
+.phone-stage .schedule-mode{border-radius:16px}
+.phone-stage .schedule-mode button{height:42px;font-size:14px!important}
+.phone-stage .schedule-day-head{margin-top:16px!important}
+.phone-stage .schedule-day-head span{font-size:14px!important}
+.phone-stage .schedule-day-head strong,.phone-stage .schedule-day-head small{font-size:12px!important;line-height:18px}
+.phone-stage .date-strip{margin-top:12px!important}
+.phone-stage .date-strip button{height:52px}
+.phone-stage .date-strip span{font-size:12px!important}
+.phone-stage .date-strip b{font-size:14px!important}
+.phone-stage .schedule-page>.schedule-title{margin-top:16px!important}
+.phone-stage .schedule-title span{font-size:12px!important}
+.phone-stage .action-task-list{gap:10px}
+.phone-stage .action-task-card{grid-template-columns:18px minmax(0,1fr) auto;gap:6px;padding:12px 10px;min-height:78px;border-radius:22px}
+.phone-stage .task-card-main{grid-template-columns:46px minmax(0,1fr) 16px;gap:7px}
+.phone-stage .task-card-main time{font-size:14px!important;color:#4c8da6}
+.phone-stage .task-card-main strong{font-size:14px!important;line-height:21px;color:var(--ui-ink)}
+.phone-stage .task-card-main small{font-size:12px!important;line-height:18px;color:var(--ui-muted)!important}
+.phone-stage .task-handoff{height:40px;min-width:70px;padding:0 8px;font-size:11px!important;border-radius:14px;white-space:nowrap}
+.phone-stage .agent-player.idle{display:none}
+.phone-stage .player-main small{font-size:11px!important}
+.phone-stage .player-main strong{font-size:13px!important}
+
+/* Elfred opens as a real, usable conversation surface. */
+.phone-stage .personal-agent-backdrop{z-index:900!important}
+.phone-stage .personal-agent-sheet{display:flex!important;flex-direction:column;padding:12px 20px 20px!important;background:var(--ui-bg)!important}
+.phone-stage .pa-fullscreen-head{height:64px!important;flex:0 0 64px;grid-template-columns:44px 1fr 44px!important;border-bottom:1px solid var(--ui-line)}
+.phone-stage .pa-fullscreen-head>div{display:flex;flex-direction:column;align-items:center;gap:1px}
+.phone-stage .pa-fullscreen-head>div small{display:block!important;font-size:10px!important;line-height:14px;letter-spacing:.04em;color:var(--ui-muted)}
+.phone-stage .pa-fullscreen-head>div h2{font-size:18px!important;line-height:26px;color:var(--ui-ink)}
+.phone-stage .pa-fullscreen-head>button{width:42px!important;height:42px!important}
+.phone-stage .personal-agent-sheet .pa-chat-stream{
+  min-height:0!important;
+  max-height:none!important;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  margin:0!important;
+  padding:20px 0!important;
+  overflow-y:auto;
+  border:0;
+  background:transparent;
+}
+.phone-stage .pa-chat-message{gap:8px}
+.phone-stage .pa-chat-message>span{width:30px;height:30px;flex:0 0 30px;border-radius:10px}
+.phone-stage .pa-chat-message p{max-width:82%;padding:11px 13px!important;font-size:14px!important;line-height:1.65!important;color:var(--ui-body)!important;border:1px solid var(--ui-line)!important;background:#fff!important}
+.phone-stage .pa-chat-message.user p{color:#fff!important;border-color:#526570!important;background:#526570!important}
+.phone-stage .pa-flow{flex:1;margin-top:20px!important;background:#fff!important}
+.phone-stage .pa-flow h3{font-size:20px!important;line-height:1.5}
+.phone-stage .pa-flow-back,.phone-stage .pa-flow>small,.phone-stage .pa-answers span{font-size:12px!important}
+.phone-stage .pa-chat-suggestions{display:flex;gap:8px;overflow-x:auto;padding:0 0 10px;scrollbar-width:none}
+.phone-stage .pa-chat-suggestions::-webkit-scrollbar{display:none}
+.phone-stage .pa-chat-suggestions button{flex:0 0 auto;min-height:36px;padding:7px 12px;border:1px solid var(--ui-line);border-radius:99px;color:#56616a;background:#fff;font-size:13px;white-space:nowrap}
+.phone-stage .pa-composer-full{height:56px!important;flex:0 0 56px;margin-top:0!important;padding:6px!important;border-radius:20px!important;border-color:#dde1e5!important;background:#fff!important;box-shadow:none!important}
+.phone-stage .pa-composer-full input{font-size:16px!important;line-height:24px;color:var(--ui-ink)}
+.phone-stage .pa-composer-full button{width:42px!important;height:42px!important}
+.phone-stage .pa-composer-full button:disabled{opacity:.42}
+
+@media(max-width:360px){
+  .phone-stage{--ui-gutter:16px}
+  .phone-stage .task-grip{display:none}
+  .phone-stage .action-task-card{grid-template-columns:minmax(0,1fr) 62px}
+  .phone-stage .task-handoff{min-width:62px;padding:0 5px}
+}
+
+/* V27.4 — one stable library header, a true one-screen knowledge overview, and a calmer memory archive. */
+.phone-stage .library-topbar{
+  width:100%;
+  height:72px!important;
+  display:grid;
+  grid-template-columns:180px 140px;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.phone-stage .library-switch{
+  width:180px;
+  height:72px;
+  display:grid;
+  grid-template-columns:88px 88px;
+  align-items:center;
+  gap:4px;
+}
+.phone-stage .library-switch button{
+  position:relative;
+  height:72px;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  padding:0;
+  border:0;
+  color:var(--ui-muted)!important;
+  background:transparent;
+  font-size:16px!important;
+  font-weight:500;
+  line-height:32px;
+  letter-spacing:-.025em;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.phone-stage .library-switch button.active{
+  color:var(--ui-ink)!important;
+  font-size:24px!important;
+  font-weight:600;
+}
+.phone-stage .library-switch button.active::after{
+  content:"";
+  position:absolute;
+  left:0;
+  bottom:6px;
+  width:32px;
+  height:3px;
+  border-radius:99px;
+  background:var(--ui-ink);
+}
+.phone-stage .library-topbar .header-alignment{
+  width:140px;
+  min-width:140px;
+  height:48px;
+  padding:6px 8px 6px 6px;
+  transform:none!important;
+}
+.phone-stage .knowledge-page .sticky-knowledge-bar{
+  height:72px!important;
+  margin:0 -16px!important;
+  padding:0 16px!important;
+}
+.phone-stage .memory-sticky-top{
+  margin:0 -20px!important;
+  padding:0 20px!important;
+}
+.phone-stage .memory-sticky-top .knowledge-topbar{height:72px!important}
+
+/* Knowledge: show three complete cards and the full insight within one viewport. */
+.phone-stage .app-scroll:has(> .knowledge-page){overflow:hidden;padding-bottom:0}
+.phone-stage .knowledge-page{height:100%;min-height:0;padding:0 16px 82px!important;overflow:hidden}
+.phone-stage .knowledge-page .deck-section{margin-top:3px}
+.phone-stage .knowledge-page .deck-heading{min-height:28px}
+.phone-stage .knowledge-page .deck-filters{gap:7px;margin:4px 0 0}
+.phone-stage .knowledge-page .deck-filters>button{height:30px;min-height:30px;padding:0 12px;font-size:12px!important}
+.phone-stage .knowledge-page .asset-deck{gap:8px;margin:6px -16px 0;padding:0 16px 3px}
+.phone-stage .knowledge-page .deck-card{
+  width:calc((min(100vw,430px) - 48px)/3);
+  height:146px;
+  min-height:146px;
+  flex:0 0 calc((min(100vw,430px) - 48px)/3);
+  padding:9px;
+}
+.phone-stage .knowledge-page .deck-card-top>b{max-width:calc(100% - 16px);font-size:9px!important}
+.phone-stage .knowledge-page .deck-card>strong{font-size:11px!important}
+.phone-stage .knowledge-page .deck-card>small{font-size:9px!important}
+.phone-stage .knowledge-page .deck-score{display:flex;align-items:baseline;gap:3px;padding-top:4px;white-space:nowrap}
+.phone-stage .knowledge-page .deck-score>b{font-size:17px!important}
+.phone-stage .knowledge-page .deck-score :is(em,i){font-size:8px!important}
+.phone-stage .knowledge-page .deck-score>i{margin-left:auto}
+.phone-stage .deck-pagination{height:12px;display:flex;align-items:center;justify-content:center;gap:5px}
+.phone-stage .deck-pagination span{width:5px;height:5px;border-radius:50%;background:#d7dade}
+.phone-stage .deck-pagination span.active{width:16px;border-radius:99px;background:#565c62}
+.phone-stage .knowledge-evidence-bridge{margin-top:4px;padding-top:6px}
+.phone-stage .knowledge-bridge-row>button{grid-template-columns:27px minmax(0,1fr) 20px;gap:6px}
+.phone-stage .knowledge-bridge-row>button>b{width:20px;text-align:right}
+.phone-stage .knowledge-page .compact-insights{position:relative;inset:auto;margin:7px 0 0;padding:0;gap:2px}
+.phone-stage .knowledge-page .fixed-insights-heading{min-height:28px;display:flex;align-items:center;justify-content:space-between}
+.phone-stage .insight-view-toggle{height:28px;display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px;border-radius:99px;background:#eceef0}
+.phone-stage .insight-view-toggle button{min-width:48px;padding:0 10px;border:0;border-radius:99px;color:var(--ui-muted)!important;background:transparent;font-size:11px!important;cursor:pointer}
+.phone-stage .insight-view-toggle button.active{color:var(--ui-ink)!important;background:#fff}
+.phone-stage .knowledge-page .insight-stack{height:196px}
+.phone-stage .knowledge-page .insight-stack::before,
+.phone-stage .knowledge-page .insight-stack::after{height:168px}
+.phone-stage .knowledge-page .insight-stack-card{top:2px;height:180px;min-height:180px;padding:9px 12px}
+.phone-stage .knowledge-page .insight-stack-card.is-active{transform:translateY(3px) scale(1)}
+.phone-stage .knowledge-page .insight-stack .radar-layout{grid-template-columns:1.08fr .72fr;margin-top:-2px}
+.phone-stage .knowledge-page .insight-stack .ability-radar{max-height:122px}
+.phone-stage .knowledge-page .insight-stack .radar-summary strong{font-size:28px!important}
+.phone-stage .knowledge-page .insight-stack .growth-fixed-top{margin-top:3px}
+.phone-stage .knowledge-page .insight-stack .fixed-growth-chart{height:58px;margin-top:0}
+.phone-stage .knowledge-page .insight-stack .fixed-growth-stats{margin-top:0}
+.phone-stage .knowledge-page .insight-stack .fixed-growth-stats>span{padding:4px 7px}
+
+/* Memory: the shared header and category rail stay fixed while the archive scrolls. */
+.phone-stage .memory-page{padding:0 20px 116px!important;overflow:visible!important}
+.phone-stage .memory-filter{
+  height:48px;
+  gap:14px;
+  margin:0 -20px!important;
+  padding:4px 20px 12px!important;
+  overflow-x:auto;
+  scroll-snap-type:x proximity;
+  border-bottom:1px solid var(--ui-line)!important;
+}
+.phone-stage .memory-filter button{
+  flex:0 0 58px;
+  min-width:58px;
+  font-size:14px!important;
+  text-align:left;
+  scroll-snap-align:start;
+}
+.phone-stage .memory-filter button.active::after{bottom:-12px;width:32px;height:3px;background:var(--ui-ink)}
+.phone-stage .memory-overview{margin-top:16px;padding:16px;border-radius:24px!important}
+.phone-stage .memory-overview-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.phone-stage .memory-overview-head>span{display:flex;align-items:center;gap:6px;color:#4f7f94;font-size:12px;font-weight:600}
+.phone-stage .memory-overview-head>button{padding:5px 9px;border:1px solid var(--ui-line);border-radius:99px;color:var(--ui-muted);background:#fff;font-size:12px;cursor:pointer}
+.phone-stage .memory-overview>p{margin:12px 0;font-size:16px!important;line-height:1.75!important}
+.phone-stage .memory-overview>p.is-clamped{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:3}
+.phone-stage .memory-overview>div:last-child{padding-top:10px}
+.phone-stage .memory-groups{gap:20px;margin-top:24px}
+.phone-stage .memory-group h2{margin:0 0 12px!important}
+.phone-stage .memory-card-stack{gap:12px}
+.phone-stage .memory-card{gap:10px;padding:16px!important;border-radius:24px!important}
+.phone-stage .memory-card>span{padding-bottom:9px}
+.phone-stage .memory-card p{display:-webkit-box;overflow:hidden;margin:0;-webkit-box-orient:vertical;-webkit-line-clamp:3}
+.phone-stage .memory-card small,.phone-stage .memory-card em{font-size:12px!important}
+.phone-stage .memory-end{margin:24px 0 0}
+
+.phone-stage .memory-detail-page{min-height:100%;padding:0 20px 112px;background:var(--ui-bg)!important}
+.phone-stage .memory-detail-head{min-height:72px;display:grid;grid-template-columns:42px 1fr;align-items:center;gap:12px;border-bottom:1px solid var(--ui-line)}
+.phone-stage .memory-detail-head>div{display:flex;flex-direction:column;gap:1px}
+.phone-stage .memory-detail-head small{font-size:12px;color:var(--ui-muted)}
+.phone-stage .memory-detail-head h1{font-size:24px!important}
+.phone-stage .memory-detail-card{margin-top:16px;padding:20px;border:1px solid var(--ui-line);border-radius:24px;background:#fff}
+.phone-stage .memory-detail-card>span{display:flex;align-items:center;gap:7px;color:#4f7f94}
+.phone-stage .memory-detail-card>span strong{font-size:14px}
+.phone-stage .memory-detail-card>p{margin:18px 0;font-size:16px!important;line-height:1.8!important}
+.phone-stage .memory-detail-card>div{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding-top:14px;border-top:1px solid var(--ui-line)}
+.phone-stage .memory-detail-card>div>span{display:flex;flex-direction:column;gap:4px}
+.phone-stage .memory-detail-card b{font-size:14px}
+.phone-stage .memory-detail-card small{font-size:11px!important}
+.phone-stage .memory-detail-use{display:grid;grid-template-columns:24px 1fr;gap:10px;margin-top:12px;padding:16px;border:1px solid var(--ui-line);border-radius:20px;background:#fff}
+.phone-stage .memory-detail-use strong{font-size:14px}
+.phone-stage .memory-detail-use p{margin:5px 0 0;font-size:13px!important;line-height:1.65!important}
+
+@media(max-height:760px){
+  .phone-stage .library-topbar,.phone-stage .library-switch,.phone-stage .library-switch button{height:64px!important}
+  .phone-stage .knowledge-page .sticky-knowledge-bar{height:64px!important}
+  .phone-stage .knowledge-page .deck-card{height:128px;min-height:128px}
+  .phone-stage .knowledge-page .insight-stack{height:174px}
+  .phone-stage .knowledge-page .insight-stack::before,.phone-stage .knowledge-page .insight-stack::after{height:147px}
+  .phone-stage .knowledge-page .insight-stack-card{height:158px;min-height:158px}
+  .phone-stage .knowledge-page .insight-stack .ability-radar{max-height:102px}
+}
+
+@media(max-width:360px){
+  .phone-stage .library-topbar{grid-template-columns:156px 128px;gap:8px}
+  .phone-stage .library-switch{width:156px;grid-template-columns:76px 76px}
+  .phone-stage .library-topbar .header-alignment{width:128px;min-width:128px}
+  .phone-stage .library-switch button.active{font-size:22px!important}
+  .phone-stage .knowledge-page .deck-score>em{display:none}
+}
+
+/* V27.5 visual-QA corrections: eliminate header drift and protect compact-card typography. */
+.phone-stage .knowledge-page{padding-left:20px!important;padding-right:20px!important}
+.phone-stage .knowledge-page .sticky-knowledge-bar{margin-left:-20px!important;margin-right:-20px!important;padding-left:20px!important;padding-right:20px!important}
+.phone-stage .knowledge-page .asset-deck{gap:8px;margin-left:-20px;margin-right:-20px;padding-left:0;padding-right:0}
+.phone-stage .knowledge-page .deck-card{
+  width:calc((100% - 16px)/3);
+  flex-basis:calc((100% - 16px)/3);
+  overflow:hidden;
+}
+.phone-stage .knowledge-page .deck-card-top{height:18px;min-height:18px;flex:0 0 18px;line-height:18px}
+.phone-stage .knowledge-page .deck-card-top>b{padding:2px 5px;line-height:12px}
+.phone-stage .knowledge-page .deck-card>.asset-icon{width:28px;height:28px;min-height:28px;flex:0 0 28px;margin-top:4px}
+.phone-stage .knowledge-page .deck-type{min-height:12px;flex:0 0 12px;margin-top:3px;line-height:12px}
+.phone-stage .knowledge-page .deck-card>strong{height:14px;min-height:14px;flex:0 0 14px;margin-top:1px;line-height:14px}
+.phone-stage .knowledge-page .deck-card>small{height:12px;min-height:12px;flex:0 0 12px;margin-top:1px;line-height:12px}
+.phone-stage .knowledge-page .deck-score{height:24px;min-height:24px;flex:0 0 24px;padding-top:2px;line-height:20px}
+.phone-stage .knowledge-page .deck-score>b{line-height:20px}
+.phone-stage .memory-filter button{flex-basis:66px;min-width:66px}
+
+@media(max-width:360px){
+  .phone-stage .knowledge-page{padding-left:16px!important;padding-right:16px!important}
+  .phone-stage .knowledge-page .sticky-knowledge-bar{margin-left:-16px!important;margin-right:-16px!important;padding-left:16px!important;padding-right:16px!important}
+  .phone-stage .knowledge-page .asset-deck{margin-left:-16px;margin-right:-16px}
+}
+
+/* V27.6 — account sign-out */
+.phone-stage .logout-setting strong{color:#9b4545!important}
+.phone-stage .logout-setting>svg{color:#a85454!important}
+.phone-stage .logout-modal{position:absolute;inset:0;z-index:1200;padding:24px;background:rgba(28,32,35,.28);backdrop-filter:blur(8px)}
+.phone-stage .logout-dialog{width:100%;padding:28px 24px 20px;border:1px solid #e7eaec;border-radius:28px;text-align:center;background:#fff}
+.phone-stage .logout-dialog-icon{width:48px;height:48px;display:grid;place-items:center;margin:0 auto 16px;border-radius:16px;color:#9b4545;background:#f7eeee}
+.phone-stage .logout-dialog h2{margin:0;font-size:1.25rem!important;line-height:1.4!important;color:#1c2226!important}
+.phone-stage .logout-dialog p{margin:8px 0 24px;font-size:.875rem!important;line-height:1.65!important;color:#707a80!important}
+.phone-stage .logout-dialog-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.phone-stage .logout-dialog-actions button{height:48px;border:1px solid #e2e6e8;border-radius:999px;font-size:.875rem;font-weight:550;color:#31383d;background:#fff}
+.phone-stage .logout-dialog-actions button:last-child{border-color:#30363b;color:#fff;background:#30363b}
