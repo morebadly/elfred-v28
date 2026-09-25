@@ -171,6 +171,39 @@ export function updateTaskStatus(
   return { ...task, status, nextStep, updatedAt: "刚刚" };
 }
 
+/**
+ * 老版本往本地（localStorage）存过一份**演示身份**——不是用户填的，是种子。
+ * 种子现在清干净了，但老会话身上还留着，会一直让"我的 / 编辑资料"显示别人的资料，
+ * 而且会被"改了就同步给后端"那个 effect 写回后端。所以恢复时一次性丢掉：
+ * **只有值和那份种子分毫不差才清**，用户自己改过一个字就完全不动。
+ */
+const DEMO_IDENTITY = {
+  name: "Harisen",
+  username: "harisen",
+  role: "产品经理与创业者",
+  bio: "正在把 Personal Agent 做成真正懂你、能行动的数字伙伴。",
+  focus: "完成 Elfred 移动端体验",
+  tags: ["产品", "创业"],
+};
+
+function dropStoredDemoIdentity(
+  profile: V277State["profile"],
+): V277State["profile"] {
+  const next = { ...profile };
+  if (next.name === DEMO_IDENTITY.name) next.name = "";
+  if (next.username === DEMO_IDENTITY.username) next.username = "";
+  if (next.role === DEMO_IDENTITY.role) next.role = "";
+  if (next.bio === DEMO_IDENTITY.bio) next.bio = "";
+  if (next.focus === DEMO_IDENTITY.focus) next.focus = "";
+  if (
+    next.tags.length === DEMO_IDENTITY.tags.length &&
+    next.tags.every((tag, index) => tag === DEMO_IDENTITY.tags[index])
+  ) {
+    next.tags = [];
+  }
+  return next;
+}
+
 export function createInitialV277State(): V277State {
   return {
     version: 278,
@@ -182,13 +215,16 @@ export function createInitialV277State(): V277State {
       onboardingComplete: false,
     },
     agentSetup: createDefaultAgentSetup(),
+    // 新用户就是一张白纸：这里以前预置过一份演示身份
+    // （username "harisen" / 一段简介 / ["产品","创业"]），
+    // 结果用户第一次进"我的"和"编辑资料"看到的是别人的资料。
     profile: {
       name: "",
-      username: "harisen",
+      username: "",
       role: "",
-      bio: "正在把 Personal Agent 做成真正懂你、能行动的数字伙伴。",
+      bio: "",
       focus: "",
-      tags: ["产品", "创业"],
+      tags: [],
       showLevel: true,
     },
     profileVisibility: "public",
@@ -242,7 +278,7 @@ export function restoreV277State(value: unknown): V277State {
         candidate.account?.onboardingComplete ?? legacyComplete,
     },
     agentSetup: restoredSetup,
-    profile: { ...base.profile, ...candidate.profile },
+    profile: dropStoredDemoIdentity({ ...base.profile, ...candidate.profile }),
     profileVisibility:
       candidate.profileVisibility === "contacts" ||
       candidate.profileVisibility === "private"

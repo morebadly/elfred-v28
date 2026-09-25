@@ -1,0 +1,229 @@
+﻿/*
+ * 记忆页专属样式（页面负责人维护）。
+ *
+ * 旧版这页只画了两张"身份 / 关系"卡，真正的记忆条目一条都没露面，所以：
+ *   1. 记忆条目列表：每条一眼看完"是什么 · 值是什么 · 从哪来 · 确认没有"，点进去能改能删；
+ *   2. 身份卡的描述不再被照片挤到截断（旧版实测被裁成"…价值交付的 Personal"）；
+ *   3. 空分组给一句明确的话，不要留一片空白。
+ *
+ * 兼容说明：公共样式 app/v27-7.css 用固定高度（identity 164px / relationship 166px）画的这两张卡，
+ * 这里按内容重算高度，并保持同等优先级覆盖。
+ */
+
+:global(.v277-memory-overview) .list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  margin-top: 6px !important;
+}
+
+:global(.v277-memory-overview) .count {
+  color: #8b939b !important;
+  font-size: 11.5px !important;
+  font-weight: 600 !important;
+}
+
+:global(.v277-memory-overview) .row {
+  display: flex !important;
+  width: 100% !important;
+  flex-direction: column !important;
+  gap: 3px !important;
+  padding: 9px 12px 10px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow:
+    0 0 0 1px rgba(15, 23, 42, 0.06),
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 6px 16px rgba(61, 74, 85, 0.04) !important;
+  text-align: left !important;
+  transition: transform 140ms cubic-bezier(0.2, 0, 0, 1) !important;
+}
+
+:global(.v277-memory-overview) .row:active {
+  transform: scale(0.985) !important;
+}
+
+:global(.v277-memory-overview) .rowHead {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+}
+
+:global(.v277-memory-overview) .rowLabel {
+  color: #6b757d !important;
+  font-size: 11px !important;
+  font-style: normal !important;
+  font-weight: 600 !important;
+}
+
+:global(.v277-memory-overview) .rowStatus {
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  color: #4f8f78 !important;
+  font-size: 10px !important;
+}
+
+/* 记忆体检：后端有接口、界面以前没入口，这块是补上的真入口 */
+.hygiene {
+  margin: 4px 0 14px;
+  padding: 12px 14px;
+  border: 1px solid #e8eaee;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.hygieneHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hygieneHead h2 {
+  margin: 0;
+  font-size: 15px;
+  color: #171a1d;
+}
+
+.hygieneRun {
+  padding: 6px 12px;
+  border: 1px solid #dfe2e7;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+  color: #171a1d;
+}
+
+.hygieneRun:disabled {
+  opacity: 0.6;
+}
+
+.hygieneNote {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: #5c626b;
+}
+
+.hygieneGroup {
+  margin-top: 10px;
+}
+
+.hygieneGroup b {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: #5c626b;
+}
+
+.hygieneItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid #f1f3f6;
+  font-size: 12px;
+  color: #171a1d;
+}
+
+.hygieneItem span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hygieneItem button {
+  flex: none;
+  padding: 4px 10px;
+  border: 1px solid #dfe2e7;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12px;
+}
+
+:global(.v277-memory-overview) .rowValue {
+  overflow: hidden !important;
+  color: #171a1d !important;
+  font-size: 15px !important;
+  line-height: 20px !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+:global(.v277-memory-overview) .rowSource {
+  color: #8b939b !important;
+  font-size: 10.5px !important;
+}
+
+:global(.v277-memory-overview) .empty {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin: 0 !important;
+  padding: 12px 12px !important;
+  border-radius: 14px !important;
+  background: rgba(15, 23, 42, 0.03) !important;
+  color: #8b939b !important;
+  font-size: 11.5px !important;
+}
+
+/* 身份卡：旧版固定 164px + 125px 的行高，描述被挤到截行（实测裁掉"Personal Agent。"）。
+   这里改成按内容排；照片列宽保持 128px 不动——底图里已经画了一个标签胶囊，改宽度会让两层标签错开。 */
+:global(.v277-memory-overview) :global(.v277-identity-card) {
+  height: auto !important;
+  min-height: 164px !important;
+  grid-template-rows: auto auto !important;
+}
+
+:global(.v277-memory-overview) :global(.v277-identity-card) > span > p {
+  display: block !important;
+  height: auto !important;
+  overflow: visible !important;
+  -webkit-line-clamp: unset !important;
+}
+
+/* 照片按参考图里那块的原始尺寸（154 × 133）摆：
+   底图是按固定像素裁的，框一小，图里画的"产品负责人"胶囊就会被裁掉右边和下边（旧版就是这样）。 */
+:global(.v277-memory-overview) :global(.v277-identity-card) > :global(.v277-memory-photo) {
+  /* 原来 154×133 太大，会压到左边的文字（"正在打造…"那几行被盖住）——收小一档 */
+  width: 116px !important;
+  height: 100px !important;
+  align-self: start !important;
+  justify-self: end !important;
+  border-radius: 12px !important;
+}
+
+/* 底图里画了一个"产品负责人"胶囊，界面上这层正好盖在它上面：
+   盖住之后标签是活的（跟着数据走），也只剩一个胶囊，不会看成两层。 */
+:global(.v277-memory-overview) :global(.v277-identity-card) :global(.v277-memory-photo) > em {
+  right: 9px !important;
+  bottom: 8px !important;
+  left: 9px !important;
+  height: 30px !important;
+  height: 24px !important;
+  border-radius: 12px !important;
+  font-size: 10px !important;
+}
+
+/* ── 给用户用：记忆库里的"人像"不许是示例素材 ──────────────────────
+   公共 CSS（v27-8-artwork.css:8）把 .v277-memory-photo / .v277-relation-photo
+   设成了 reference-memory.png 的雪碧图切块（示例人物照）。新用户第一次进来
+   不该看到一串不认识的人脸，所以在我们这一页里统一盖成中性底：
+   身份卡用它的标签（em 里是真数据，"产品负责人"那种），关系人用姓名首字母。 */
+:global(.v277-memory-overview) :global(.v277-memory-photo),
+:global(.v277-memory-overview) :global(.v277-relation-photo) {
+  background-image: linear-gradient(160deg, #eef3fb 0%, #e6ecf7 60%, #dfe7f4 100%) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  display: grid !important;
+  place-items: center !important;
+}
+:global(.v277-memory-overview) :global(.v277-memory-photo) > em,
+:global(.v277-memory-overview) :global(.v277-relation-photo) > em {
+  position: static !important;
+  inset: auto !important;
+  color: #5b6b86 !important;
+  font-weight: 600 !important;
+}

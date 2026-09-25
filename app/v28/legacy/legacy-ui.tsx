@@ -23,6 +23,10 @@ import {MemoryGovernance,InactiveMemories} from '../features/home/memory-governa
 import {MemoryEvidence} from "../core/memory-evidence";
 import {ConnectedUtility,ConnectedSettings,PrivateAssist,AssetEditor,MethodsPanel,ConversationMembers} from "../core/runtime-panels";
 import {text as entityText,statuses as runtimeStatuses} from "../features/live/types";
+// ── 第二页 / 第四页以我方为准（负责人 B）──────────────────────────
+// 这几处是接入点：勋章与关系读我方后端、头像/占位不再用示例素材。
+// 第二页/第四页的东西一律从它们自己的入口进（见 features/pages24/index.ts）
+import {fetchRelationships,hasLiveAlignment,HonorGallery,libraryHeader,type LiveRelationship} from '../features/pages24';
 
 import {
   Fragment,
@@ -6895,6 +6899,18 @@ export function UtilityPage({
 }) {
   const runtime=useRuntime();
   const [contact, setContact] = useState("");
+  // 关系图读我方 /page2/relationships（后端没有就如实空着，不摆写死的三个人）
+  const [relationships, setRelationships] = useState<LiveRelationship[] | null>(null);
+  useEffect(() => {
+    if (kind !== "relationships") return;
+    let alive = true;
+    void fetchRelationships().then((result) => {
+      if (alive && result?.relationships) setRelationships(result.relationships);
+    });
+    return () => {
+      alive = false;
+    };
+  }, [kind]);
   const definitions = {
     tools: {
       title: "Skill 与 Mini App",
@@ -7054,7 +7070,9 @@ export function UtilityPage({
       ],
     },
   } as const;
-  if(runtime)return <ConnectedUtility kind={kind} go={go} onBack={onBack}/>;
+  // 勋章和关系图这两屏以我方为准（第二页/第四页是负责人 B 的域），其余继续走同事的 ConnectedUtility。
+  if(runtime&&kind!=='honors'&&kind!=='relationships')
+    return <ConnectedUtility kind={kind} go={go} onBack={onBack}/>;
   if (kind === "add-friend")
     return (
       <main className="v277-page v278-utility-page">
@@ -7093,23 +7111,37 @@ export function UtilityPage({
       </main>
     );
   const page = definitions[kind];
+  // 关系人走后端；勋章走 HonorGallery（它和第二页"理解度"里那一栏是同一个组件）
+  const items =
+    kind === "relationships" && relationships
+      ? relationships.map((person) => ({
+          title: person.role ? `${person.name} · ${person.role}` : person.name,
+          copy: person.stage || "已确认的关系",
+          icon: UserRound,
+          action: () => go({ name: "chat", id: person.chatId }),
+        }))
+      : page.items;
   return (
     <main className="v277-page v278-utility-page">
       <AppHeader title={page.title} subtitle={page.subtitle} onBack={onBack} />
-      <section className="v278-utility-list">
-        {page.items.map(({ title, copy, icon: Icon, action }) => (
-          <button type="button" key={title} onClick={action}>
-            <span>
-              <Icon size={21} />
-            </span>
-            <div>
-              <b>{title}</b>
-              <p>{copy}</p>
-            </div>
-            <ChevronRight size={19} />
-          </button>
-        ))}
-      </section>
+      {kind === "honors" ? <HonorGallery compact /> : null}
+      {/* 真数据为空时不要画一个空框，让下面那句说明去讲 */}
+      {items.length > 0 ? (
+        <section className="v278-utility-list">
+          {items.map(({ title, copy, icon: Icon, action }) => (
+            <button type="button" key={title} onClick={action}>
+              <span>
+                <Icon size={21} />
+              </span>
+              <div>
+                <b>{title}</b>
+                <p>{copy}</p>
+              </div>
+              <ChevronRight size={19} />
+            </button>
+          ))}
+        </section>
+      ) : null}
       <aside className="v278-utility-note">
         <BadgeCheck size={18} />
         <p>
@@ -7123,7 +7155,9 @@ export function UtilityPage({
                   ? "等级代表理解与可托付程度，不以单纯使用次数升级。"
                   : kind === "honors"
                     ? "勋章只记录已经发生且能够被验证的成长。"
-                    : "关系信息只使用你已确认的记忆，不会自动代表你联系任何人。"}
+                    : kind === "relationships" && relationships?.length === 0
+                      ? "还没有已确认的关系。它只从你确认过的记忆里来，不会替你去联系任何人。"
+                      : "关系信息只使用你已确认的记忆，不会自动代表你联系任何人。"}
         </p>
       </aside>
     </main>
@@ -7143,15 +7177,16 @@ export function ProfileShareSheet({
 }) {
   const runtime=useRuntime();
   const startY = useRef(0);
-  const name = state.profile.name || "Harisen";
-  const username = state.profile.username || "harisen";
+  // 空态：没设置过就留空，不拿演示身份顶上（用户名没填就不渲染 @ 那一行）
+  const name = state.profile.name || "还没有名字";
+  const handle = state.profile.username.replace(/^@/, "");
   const share = async (channel: string) => {
     if(runtime&&state.profileVisibility!=='public'){notify('请先确认公开称呼和简介');return;}
     if(runtime&&channel==='生成海报'){notify('请使用复制链接或系统分享');return;}
     const shareData = {
       title: `${name} 的 Elfred 主页`,
       text: `${state.profile.role || "尚未填写职业"} · Elfred 公开主页`,
-      url: runtime?window.location.origin+"/u/"+encodeURIComponent(username):window.location.origin + window.location.pathname,
+      url: runtime?window.location.origin+"/u/"+encodeURIComponent(handle):window.location.origin + window.location.pathname,
     };
     if (channel === "微信好友" || channel === "朋友圈") {
       try {
@@ -7202,17 +7237,11 @@ export function ProfileShareSheet({
           </IconButton>
         </header>
         <section className="v279-share-card">
-          <i
-            className="v279-owner-avatar"
-            style={
-              {
-                "--v279-avatar-image": "url('/profile-reference.png')",
-              } as CSSProperties
-            }
-          />
+          {/* 没设头像就是中性底（示例人像已经不再当默认值） */}
+          <i className="v279-owner-avatar" />
           <span>
             <b>{name}</b>
-            <small>@{username.replace(/^@/, "")}</small>
+            {handle ? <small>@{handle}</small> : null}
             <p>{state.profile.role || "尚未填写职业"}</p>
           </span>
           <QrCode size={68} strokeWidth={2.1} />
@@ -7380,7 +7409,7 @@ export function ProfileEditPage({
               {
                 "--v279-avatar-image": avatarUrl
                   ? `url(${avatarUrl})`
-                  : "url('/profile-reference.png')",
+                  : "none",
               } as CSSProperties
             }
           />
@@ -7403,7 +7432,7 @@ export function ProfileEditPage({
             onChange={(event) =>
               setProfile({ ...profile, name: event.target.value })
             }
-            placeholder="Harisen"
+            placeholder="还没有设置"
           />
         </label>
         <label>
@@ -7419,7 +7448,7 @@ export function ProfileEditPage({
                   username: event.target.value.replace(/^@/, ""),
                 })
               }
-              placeholder="harisen"
+              placeholder="还没有设置"
             />
           </div>
         </label>
@@ -7448,7 +7477,7 @@ export function ProfileEditPage({
                   .slice(0, 4),
               })
             }
-            placeholder="产品、创业"
+            placeholder="用「、」分隔，最多 4 个"
           />
         </label>
       </section>
@@ -7496,14 +7525,19 @@ export function SettingsPage({
     | null
   >(null);
   const [logoutOpen, setLogoutOpen] = useState(false);
-  const name = state.profile.name || "Harisen";
-  const username = state.profile.username || "harisen";
+  // 空态：没设置过就留空（不再拿演示身份顶上）
+  const name = state.profile.name || "还没有名字";
+  const handle = state.profile.username.replace(/^@/, "");
+  // 理解度那行用后端真数；后端还没给就说"还没有评估"，不摆写死的 86%
+  const alignmentValue = hasLiveAlignment
+    ? `${libraryHeader.alignment}% · Lv.${libraryHeader.level}`
+    : "还没有评估";
   const groups = [
     {
       title: "个人与 Elfred",
       rows: [
         ["account", "账号与安全", ShieldCheck, "手机号与登录方式"],
-        ["understanding", "Elfred 对我的理解", MemoryStick, "尚需验证"],
+        ["understanding", "Elfred 对我的理解", MemoryStick, alignmentValue],
         ["data", "数据与权限", Database, "已确认内容优先"],
       ],
     },
@@ -7533,17 +7567,11 @@ export function SettingsPage({
         className="v279-settings-profile"
         onClick={() => go({ name: "profile-edit" })}
       >
-        <i
-          className="v279-owner-avatar"
-          style={
-            {
-              "--v279-avatar-image": "url('/profile-reference.png')",
-            } as CSSProperties
-          }
-        />
+        {/* 没设头像就是中性底（示例人像已经不再当默认值） */}
+        <i className="v279-owner-avatar" />
         <span>
           <b>{name}</b>
-          <small>@{username.replace(/^@/, "")}</small>
+          {handle ? <small>@{handle}</small> : null}
         </span>
         <ChevronRight size={20} />
       </button>
@@ -7652,8 +7680,13 @@ export function SettingsPage({
               </div>
             ) : active === "understanding" ? (
               <div className="v279-setting-summary">
-                <strong>86%</strong>
-                <span>当前理解度 · Lv.4</span>
+                {/* 原来写死 86% / Lv.4 —— 新用户点进来也这么显示，是假数据 */}
+                <strong>{hasLiveAlignment ? `${libraryHeader.alignment}%` : "—"}</strong>
+                <span>
+                  {hasLiveAlignment
+                    ? `当前理解度 · Lv.${libraryHeader.level}`
+                    : "还没有评估"}
+                </span>
                 <p>来自已确认的个人资料、任务结果和记忆。待确认内容不会直接用于行动。</p>
                 <button type="button" onClick={() => go({ name: "memory" })}>
                   查看记忆库

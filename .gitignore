@@ -67,3 +67,6 @@ _render-*.txt
 .wrangler/
 dist/
 tsconfig.tsbuildinfo
+
+# 我们自己的 QA 截图证据（不进 PR，留在本地/内测版仓库）
+docs/证据-*/
