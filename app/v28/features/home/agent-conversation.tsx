@@ -37,6 +37,7 @@ export function AgentConversationPage({id,go,onBack}:{id:V277AgentId;go:(screen:
   const pending=runs.find(item=>['queued','running','cancel_requested','pause_requested'].includes(String(item.data.status)));
   const failed=!pending&&runs[0]&&['blocked','failed','partial','reconciliation_required'].includes(String(runs[0].data.status))&&!(runtime?.snapshot?.objects.message||[]).some(message=>message.data.task_id===runs[0].id)?runs[0]:undefined;
   const drafts=(runtime?.snapshot?.objects.task||[]).filter(item=>item.data.agent_chat_draft_conversation_id===activeId&&item.data.status!=='archived').sort((a,b)=>b.created.localeCompare(a.created));
+  const existingDrafts=(runtime?.snapshot?.objects.task||[]).filter(item=>item.data.system===systemOf(id)&&item.data.status==='draft'&&!item.data.agent_chat).sort((a,b)=>b.created.localeCompare(a.created));
   const lastHuman=[...messages].reverse().find(item=>item.data.actor_type==='human');
 
   useEffect(()=>{bottom.current?.scrollIntoView({block:'end'});},[activeId,messages.length,pending?.id]);
@@ -121,6 +122,7 @@ export function AgentConversationPage({id,go,onBack}:{id:V277AgentId;go:(screen:
           return <button type="button" className={item.id===activeId?'active':''} key={item.id} onClick={()=>selectThread(item.id)}><span>{String(first?.data.text||item.data.title).slice(0,32)}</span><small>{new Date(item.updated).toLocaleDateString('zh-CN')}</small></button>;
         })}</nav>
         {!filtered.length&&<p>还没有相关对话</p>}
+        {!!existingDrafts.length&&<div className="v283-agent-chat-old-drafts"><b>已有任务草稿</b>{existingDrafts.map(draft=><button type="button" key={draft.id} onClick={()=>{setHistoryOpen(false);go({name:'task',id:draft.id});}}><span>{String(draft.data.title)}</span><small>查看草稿 <ChevronRight size={13}/></small></button>)}</div>}
         <button type="button" className="v283-agent-chat-history-close" onClick={()=>setHistoryOpen(false)}>关闭</button>
       </aside>
     </div>}

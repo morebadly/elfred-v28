@@ -1061,6 +1061,11 @@
 .v283-agent-chat-history nav span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .v283-agent-chat-history nav small { color: #88929c; font-size: 11px; }
 .v283-agent-chat-history > p { color: #8c959e; font-size: 13px; }
+.v283-agent-chat-old-drafts { max-height: 34%; display: flex; flex-direction: column; overflow-y: auto; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e9edf0; }
+.v283-agent-chat-old-drafts > b { padding: 0 10px 8px; color: #7b858e; font-size: 12px; }
+.v283-agent-chat-old-drafts button { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 9px 10px; border: 0; border-radius: 10px; background: transparent; text-align: left; }
+.v283-agent-chat-old-drafts button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.v283-agent-chat-old-drafts button small { display: flex; align-items: center; flex: none; color: #7c8790; font-size: 11px; }
 .v283-agent-chat-history-close { margin-top: auto; padding: 11px; border: 1px solid #e0e4e8; border-radius: 15px; background: white; }
 .v283-drawer-mask {
   position: absolute;
