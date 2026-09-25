@@ -16,7 +16,7 @@ export function MessagesPage({
   const runtime=useRuntime();
   const [filter, setFilter] = useState("全部");
   const [searching, setSearching] = useState(false);
-  const contacts = runtime?(runtime.snapshot?.objects.conversation||[]).slice().sort((a,b)=>b.updated.localeCompare(a.updated)).map(item=>({id:item.id,name:String(item.data.title),text:String(runtime.snapshot?.objects.message.filter(message=>message.space===item.id).sort((a,b)=>Number(b.data.seq)-Number(a.data.seq))[0]?.data.text||"暂无消息"),time:new Date(item.updated).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}),badge:item.unread||0,kind:item.data.kind==="group"?"群聊":"私聊",avatar:item.data.kind==="group"?"avatar-group":"avatar-lin"})):[
+  const contacts = runtime?(runtime.snapshot?.objects.conversation||[]).filter(item=>item.data.kind!=='agent').slice().sort((a,b)=>b.updated.localeCompare(a.updated)).map(item=>({id:item.id,name:String(item.data.title),text:String(runtime.snapshot?.objects.message.filter(message=>message.space===item.id).sort((a,b)=>Number(b.data.seq)-Number(a.data.seq))[0]?.data.text||"暂无消息"),time:new Date(item.updated).toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}),badge:item.unread||0,kind:item.data.kind==="group"?"群聊":"私聊",avatar:item.data.kind==="group"?"avatar-group":"avatar-lin"})):[
     {
       id: "group-danbasa",
       name: "丹巴萨餐厅",

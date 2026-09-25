@@ -5,7 +5,7 @@ import {enumeration,string} from './policy.mjs';
 import {dailyTasks,localDay} from '../../app/v28/core/local-day.mjs';
 
 export function briefFacts(store,user,timezone,day) {
-  const all=store.visible(user,'task'),today=new Set(dailyTasks(all,timezone,day).map(task=>task.id));
+  const all=store.visible(user,'task').filter(task=>!task.data.internal_search),today=new Set(dailyTasks(all,timezone,day).map(task=>task.id));
   return all.filter(task=>today.has(task.id)||task.data.status==='draft').map(task=>({task_id:task.id,today:today.has(task.id),version:task.version,title:task.data.title,status:task.data.status,planned_date:task.data.planned_date||null,plan_note:task.data.plan_note||'',focus:task.data.focus_date===day}));
 }
 function suggestions(facts,day){

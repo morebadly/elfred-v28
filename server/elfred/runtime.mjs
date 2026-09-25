@@ -10,6 +10,7 @@ import { sourceRefs, search } from './knowledge.mjs';
 import {bodyFor} from './search-engine.mjs';
 import {checkContextUse} from './context-request.mjs';
 import {groupAgentReady,publishGroupAgentReply} from './group-agent.mjs';
+import {publishAgentChatReply} from './agent-chat.mjs';
 
 export function taskCommand(store,user,action,input) {
   if(action==='task.archive'||action==='task.restore') {
@@ -164,8 +165,9 @@ export class Runtime {
       const unknown=s.db.prepare("SELECT id FROM usage WHERE task_id=? AND status='unknown'").get(task.id);
       s.update(task,{...task.data,...(unknown?{unknown_tokens_reserved:Math.max(0,task.data.stop.maxTokens-task.data.tokens)}:{}),status:status==='completed'?'awaiting_acceptance':status,run_id:run.id},run.owner);
       publishGroupAgentReply(s,task,{...run,data:{...run.data,...extra}},status);
+      publishAgentChatReply(s,task,{...run,data:{...run.data,...extra}},status);
       s.db.prepare("UPDATE jobs SET status='done',lease_until=0 WHERE id=? AND lease=?").run(job.id,job.lease);
-      if(!task.data.observation_id||!['completed','awaiting_review'].includes(status))s.unique('notification',run.id+':finished',()=>s.add('notification',run.owner,{kind:'task_state',target_id:task.id,status:'unread',summary:`任务状态：${status}`}));
+      if(!task.data.agent_chat&&(!task.data.observation_id||!['completed','awaiting_review'].includes(status)))s.unique('notification',run.id+':finished',()=>s.add('notification',run.owner,{kind:'task_state',target_id:task.id,status:'unread',summary:`任务状态：${status}`}));
     });
   }
   async tick() {

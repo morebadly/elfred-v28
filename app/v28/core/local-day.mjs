@@ -19,7 +19,7 @@ export function briefIndex(preferences, timezone = 'Asia/Shanghai', value = new 
 /** @template T @param {Array<T & {updated:string,data:Record<string,any>}>} tasks */
 export function dailyTasks(tasks, timezone = 'Asia/Shanghai', day = localDay(new Date(),timezone)) {
   return tasks.filter(task=>{
-    if (['archived','cancelled'].includes(task.data.status)) return false;
+    if (task.data.internal_search || ['archived','cancelled'].includes(task.data.status)) return false;
     if (task.data.status==='completed') return localDay(task.updated,timezone)===day;
     const scheduled = task.data.planned_date || (task.data.not_before ? localDay(new Date(task.data.not_before),timezone) : null);
     if(task.data.focus_date===day)return true;

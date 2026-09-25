@@ -3,6 +3,7 @@ import { string, enumeration, bounded } from './policy.mjs';
 import { knowledgeCommand, search } from './knowledge.mjs';
 import { taskCommand } from './runtime.mjs';
 import { socialCommand } from './social.mjs';
+import {agentChatCommand} from './agent-chat.mjs';
 import { communityCommand } from './community.mjs';
 import { SYSTEMS, DEFINITIONS } from './catalog.mjs';
 import { improvementCommand } from './improvement.mjs';
@@ -77,7 +78,7 @@ export class Service {
     const s=this.store;
     return s.command(user,key,{action,input},()=>{
       if(input.evaluation_candidate_id) fail('INTERNAL_ONLY','候选方法仅能通过离线评估入口运行',403);
-      for(const handler of [observationCommand,externalToolCommand,feedCommand,reflectionCommand,semanticCommand,contextCommand,handoffCommand,projectWorkCommand,searchCommand,taskCommand,knowledgeCommand,socialCommand,communityCommand,improvementCommand,homeCommand,onboardingChoiceCommand,onboardingCommand,attachmentCommand,toolLibraryCommand,groupCommand]) {const result=handler(s,user,action,input);if(result) return result;}
+      for(const handler of [agentChatCommand,observationCommand,externalToolCommand,feedCommand,reflectionCommand,semanticCommand,contextCommand,handoffCommand,projectWorkCommand,searchCommand,taskCommand,knowledgeCommand,socialCommand,communityCommand,improvementCommand,homeCommand,onboardingChoiceCommand,onboardingCommand,attachmentCommand,toolLibraryCommand,groupCommand]) {const result=handler(s,user,action,input);if(result) return result;}
       const owned=(type)=>s.expect(s.owned(user,input.id,type),input.version);
       if(action==='onboarding.save' || action==='onboarding.complete') {
         const object=owned('onboarding');

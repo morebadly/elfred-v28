@@ -6,6 +6,7 @@ import { ConnectedProject, AssetEditor, InboxPage } from './runtime-panels';
 import {OnboardingConversation} from '../features/home/onboarding-conversation';
 import {ToolsPage,ToolEditor} from '../features/home/tools-page';
 import {AgentLevelPage} from '../features/home/agent-level-page';
+import {AgentConversationPage} from '../features/home/agent-conversation';
 import { text as entityText,statuses as runtimeStatuses } from '../features/live/types';
 import { Sparkles } from "lucide-react";
 import { DeviceFrame } from "../../device-frame";
@@ -378,7 +379,7 @@ export function V277App() {
       return <HomePage state={state} go={go} searchOpen closeSearch={back} />;
     if (screen.name === "agents") return <AgentsPage state={state} go={go} />;
     if (screen.name === "agent")
-      return (
+      return runtime?<AgentConversationPage id={screen.id} go={go} onBack={back}/>: (
         <AgentExperiencePage
           id={screen.id}
           state={state}
@@ -509,6 +510,8 @@ export function V277App() {
     }
     if (screen.name === "messages")
       return <MessagesPage state={state} go={go} />;
+    if (screen.name === "chat" && runtime && ['explore','advisor','create','connect','execute'].includes(screen.id))
+      return <AgentConversationPage id={screen.id as 'explore'|'advisor'|'create'|'connect'|'execute'} go={go} onBack={back}/>;
     if (screen.name === "chat")
       return (
         <ChatPage
