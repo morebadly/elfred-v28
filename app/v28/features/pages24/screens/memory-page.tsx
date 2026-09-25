@@ -106,10 +106,10 @@ export function MemoryPage({
             <span>
               {/* 这一格以前是"7 天持续更新"，中间换过一版叫"覆盖类别"（四类记忆有着落几类）。
                   "覆盖类别"这个词不是一眼能懂的，评审时被问了两遍，所以按原样回到"持续更新"。 */}
-              <b>{isEmpty ? 0 : view.daysTracked}</b> 天持续更新
+              <b>{view.daysTracked > 0 ? view.daysTracked : "—"}</b> 天持续更新
             </span>
             <span>
-              <b>{isEmpty ? 0 : view.credibility}%</b> 记忆可信度
+              <b>{view.credibility > 0 ? `${view.credibility}%` : "待验证"}</b> 记忆可信度
             </span>
           </div>
         </section>

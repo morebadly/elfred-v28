@@ -44,7 +44,7 @@ export function KnowledgeDetailPage({
 
   const fixIt = async () => {
     try {
-      const created = await createCapability({ title: item.title, copyText: item.purpose, type: "Skill", owner: "探索" });
+      const created = await createCapability({ title: item.title, copyText: (item.example || item.purpose).slice(0, 12000), type: "Skill", owner: "探索" });
       if (!created) return;
       setConfirming(false);
       go({ name: "knowledge" });

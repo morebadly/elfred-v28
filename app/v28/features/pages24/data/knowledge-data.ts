@@ -1,16 +1,7 @@
 "use client";
 
-// 第二页 · 知识库的数据层。按《前端模块分工与代码边界》第 3 节第 4 条：
-// 界面只负责渲染，所有数字与文案都从这里来。
-//
-// 【接后端时怎么换】把下面这些常量换成接口返回值即可，视图一行都不用动：
-//   - 能力卡 → GET /capabilities            （字段：type / dimension / title / copy / score / evidence / level）
-//   - 成果流 → GET /evidence?date=today      （字段：id / title / note / delta / kind；界面叫"成果"，字段名仍是 evidence）
-//   - 能力洞察 → GET /insight/abilities      （字段：axes[] / composite / outcomeCount / externalChecks / trend）
-// 三条规矩：
-//   1. 拿不到的字段写 null，**不要用 0 顶替**——界面对 null 显示"未知"；
-//   2. 阶段名、升级门槛、进度条都由"分数 + 成果 + 等级"算出来，不要写死在界面里；
-//   3. 演示数据可以改，但改了界面必须跟着变（这就是"活数据"的验收标准）。
+// Second-page view data. In the merged build the authenticated V28 snapshot
+// replaces these arrays on login; sample definitions below are cleared before first use.
 
 import { Brain, Compass, FileText, Link2, Rocket, Sparkles } from "lucide-react";
 
@@ -18,6 +9,7 @@ import {
   registerProjector,
   type LiveCapability,
   type LiveEvidenceDetail,
+  type LiveDocument,
   type Page2Data,
 } from "../api/page2-api";
 
@@ -456,7 +448,7 @@ export const IMPORT_SOURCES = [
  * 【接后端时】换成 GET /documents → [{ id, name, status }]
  * status: "待提取" | "已提取"（提取是后台的周期任务，手机端只负责导入与预览）
  */
-export const documents = [
+export const documents: LiveDocument[] = [
   { id: "d1", name: "我的简历.pdf", status: "待提取" },
   { id: "d2", name: "访谈录音.m4a", status: "已提取" },
 ];

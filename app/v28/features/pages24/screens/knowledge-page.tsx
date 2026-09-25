@@ -384,16 +384,12 @@ export function KnowledgePage({
           /* 空态外观照图 2：圆图标 + 标题 + 一行说明 + 黑色胶囊按钮（动作和以前一样） */
           <section className={styles.emptyBlock}>
             <i className={styles.emptyBlockIcon}>
-              {/* 图标换成对话气泡：这一屏唯一的动作是"去和它说"，不是"新建一份" */}
               <MessageCircle size={26} />
             </i>
-            <b>Elfred 还没替你干过活</b>
-            {/* 用户视角：不是"创建一张卡"，而是"让 Agent 替你干一件事"——
-                干过一次、干成了，才会沉淀成一张能力卡（卡是资产，不是入口）。
-                「创建工具」那一屏是首页「我的工具」的创建入口，语义不对，不走它。 */}
-            <p>跟它说一句你想让它做的事，它做过一次，就会变成你的能力</p>
-            <button type="button" onClick={() => go({ name: "chat", id: "elfred" })}>
-              去和 Elfred 说
+            <b>还没有可用工具</b>
+            <p>创建并启用工具后，这里会显示它的能力卡</p>
+            <button type="button" onClick={() => go({ name: "create-tool" })}>
+              创建工具
             </button>
           </section>
         ) : visibleCards.length === 0 ? (
@@ -521,14 +517,21 @@ export function KnowledgePage({
               </button>
               <button
                 type="button"
-                onClick={() => go({ name: "evidence" })}
+                onClick={() => setImportOpen(true)}
               >
-                查看全部
+                查看资料
                 <ChevronRight size={16} />
               </button>
             </span>
           </div>
           <div className="v277-progress-cards">
+            {documents.slice(0, 2).map((doc) => (
+              <button type="button" key={doc.id} onClick={() => go({ name: "knowledge-detail", id: doc.id })}>
+                <span><FileText size={19} /></span>
+                <b>{doc.name}</b>
+                <small>{doc.excerpt || "已保存的资料"}</small>
+              </button>
+            ))}
             {/* 空态那块虚线提示已经把这句话说完了，这里不再重复第二遍（重复会把洞察那块挤到底栏下面） */}
             {!evidenceEmpty && todayEvidence.map((item) => {
               const Icon = EVIDENCE_ICON[item.kind] ?? CheckCircle2;
@@ -551,7 +554,7 @@ export function KnowledgePage({
           {evidenceEmpty && (
             <section className={styles.emptyEvidence}>
               <CheckCircle2 size={20} />
-              <span>今天还没有沉淀。做完一件并确认结果，它就会出现在这里。</span>
+              <span>{documents.length ? `已保存 ${documents.length} 份资料；今天还没有已验收成果。` : "今天还没有沉淀。做完一件并确认结果，它就会出现在这里。"}</span>
             </section>
           )}
         </section>
@@ -569,11 +572,7 @@ export function KnowledgePage({
                 <Target size={26} />
               </i>
               <b>还没有能力洞察</b>
-              <p>完成一次轻量测试，生成你的初始能力画像</p>
-              <button type="button" onClick={() => go({ name: "ability-profile" })}>
-                开始测试
-              </button>
-              <em className={styles.emptyNote}>后续将根据你的任务与成果持续更新</em>
+              <p>验收真实任务成果后，这里会逐步形成能力画像</p>
             </section>
           )}
           <div

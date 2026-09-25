@@ -23,7 +23,7 @@ import {
 import { HomePage } from "../features/home/home-page";
 import { FeedDetailPage } from "../features/home/feed-detail-page";
 import { EveningReflectionPage } from "../features/home/evening-reflection-page";
-import {AbilityProfilePage,DimensionDetailPage,draftTask,EvidenceDetailPage,EvidenceListPage,KnowledgePage,launchWithSkill,MemoryPage,ProfilePage,setCardLevel} from "../features/pages24";
+import {AbilityProfilePage,DimensionDetailPage,EvidenceDetailPage,EvidenceListPage,KnowledgeDetailPage,KnowledgePage,launchWithSkill,MemoryPage,ProfilePage,setCardLevel} from "../features/pages24";
 import { MessagesPage } from "../features/messages/messages-page";
 import {Page2Identity} from "./page2-identity";
 import type { Screen } from "./screen";
@@ -42,7 +42,6 @@ import {
   DailyBriefPage,
   FeedPage,
   FriendProfilePage,
-  KnowledgeDetail,
   LoginPage,
   MemoryDetail,
   MyToolsPage,
@@ -479,14 +478,11 @@ export function V277App() {
       const entity=runtime?.snapshot&&Object.values(runtime.snapshot.objects).flat().find(entry=>entry.id===screen.id);
       const item = runtime?(entity?{id:entity.id,title:entityText(entity,'title')||entity.type,purpose:entity.type==='knowledge'?'本人保存的知识资料':'本人当前可读取的资料',source:entity.type+' · '+new Date(entity.created).toLocaleString('zh-CN'),status:runtimeStatuses[entityText(entity,'status')]||entityText(entity,'status'),example:entityText(entity,'content')||entityText(entity,'text')||entityText(entity,'goal')}:undefined):v277Knowledge.find((entry) => entry.id === screen.id);
       return item ? (
-        <KnowledgeDetail
-          anchor={screen.anchor}
+        <KnowledgeDetailPage
           item={item}
-          state={state}
           go={go}
           onBack={back}
           setState={setState}
-          notify={notify}
         />
       ) : (
         <KnowledgePage state={state} go={go} setState={setState} runtime={runtime} />

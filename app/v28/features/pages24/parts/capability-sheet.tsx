@@ -23,7 +23,6 @@ import {
   readStage,
   type AbilityType,
 } from "../data/knowledge-data";
-import { liveCardId, runAgent } from "../api/page2-api";
 import styles from "../styles/knowledge.module.css";
 
 export type SheetCard = {
@@ -444,7 +443,7 @@ export function CapabilitySheet({
           {/* ① 三格数字：能力分 / 成果（量词贴着数字） / 等级 */}
           <div className={styles.statRow}>
             <span>
-              <b>{shownScore}</b>能力分
+              <b>{shownScore}</b>{liveCard?.score == null ? "" : "能力分"}
             </span>
             <span>
               <b>
@@ -459,7 +458,7 @@ export function CapabilitySheet({
               className={styles.statCell}
               onClick={() => setShowLevel((open) => !open)}
               aria-expanded={showLevel}
-              aria-label={`当前 Lv.${card.level} ${stage}，点开看还差多少能升级`}
+              aria-label={`当前 Lv.${card.level} ${stage}，点开看成长说明`}
             >
               <b>Lv.{card.level}</b>
               <span className={styles.statCaption}>
@@ -474,7 +473,7 @@ export function CapabilitySheet({
 
           {drafted && (
             <p className={styles.draftNote}>
-              已生成任务草稿（带上这张卡）·{" "}
+              已带着工具说明进入对话 ·{" "}
               <button
                 type="button"
                 className={styles.linkBtn}
@@ -483,7 +482,7 @@ export function CapabilitySheet({
                   go({ name: "tasks" });
                 }}
               >
-                去任务里看
+                  查看任务
               </button>
             </p>
           )}
@@ -537,16 +536,9 @@ export function CapabilitySheet({
           {/* 点等级这一格展开的就是这块：还差多少能升级、升上去多给你什么、以及"去哪攒" */}
           {showLevel && (
             <div className={styles.nextBox}>
-              <span className={styles.nextBar}>
-                <span
-                  style={{
-                    width: `${Math.round(((gap?.have ?? card.evidence) / (gap?.goal ?? card.evidence + 1)) * 100)}%`,
-                    background: tone,
-                  }}
-                />
-              </span>
+              {gap && <span className={styles.nextBar}><span style={{ width: `${Math.round((gap.have / gap.goal) * 100)}%`, background: tone }} /></span>}
               <b>{gapLabel}</b>
-              <small className={styles.nextMeta}>
+              {gap && <small className={styles.nextMeta}>
                 <span>
                   <Check size={13} />
                   现在：{unlocked[unlocked.length - 1]}
@@ -557,7 +549,7 @@ export function CapabilitySheet({
                     升到 Lv.{card.level + 1} 多给你：{nextUnlock}
                   </span>
                 )}
-              </small>
+              </small>}
               {/* 门槛够了就能升；不够就直接给一条"去哪攒"的路 */}
               {gap && gap.need === 0 ? (
                 <button
@@ -649,22 +641,6 @@ export function CapabilitySheet({
                     用它做一件事
                   </button>
                   {launchNote ? <p className={styles.draftNote}>{launchNote}</p> : null}
-                  {/* 任务那条线还没接上（同事那边做完要回写成果）。
-                      在那之前，这个按钮替 Agent 把活干完：真写一条成果，卡的分和成果数立刻动。 */}
-                  {/* 后端在跑时：这条成果得能指认到后端那张卡，所以按标题回查 id。
-                      任务那条线接上之前，这个按钮替 Agent 把活干完。 */}
-                  {liveCardId(card.title) ? (
-                    <button
-                      type="button"
-                      className={styles.linkBtn}
-                      onClick={async () => {
-                        const result = await runAgent(liveCardId(card.title) ?? "");
-                        if (result) setDrafted(false);
-                      }}
-                    >
-                      让 Agent 跑完一次（演示）
-                    </button>
-                  ) : null}
                 </>
               ) : (
                 <div className={styles.timeline}>
@@ -699,7 +675,9 @@ export function CapabilitySheet({
               <section className={styles.block}>
                 <h3>使用说明</h3>
                 {/* 流程图：起止（圆角）→ 处理（矩形，内含三步链）→ 起止（圆角） */}
-                <FlowDiagram structure={structure} tone={tone} />
+                {structure.input.length || structure.output.length
+                  ? <FlowDiagram structure={structure} tone={tone} />
+                  : <p className={styles.note}>{liveSkill?.summary || card.copy}</p>}
               </section>
             </>
           )}
