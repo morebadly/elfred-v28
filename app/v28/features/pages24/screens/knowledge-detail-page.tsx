@@ -6,16 +6,13 @@ import type { V277State } from "../../../../v27-7-state";
 import type { Screen } from "../../../core/screen";
 import { AppHeader, type KnowledgeItem } from "../../../legacy/legacy-ui";
 import { draftTask } from "../api/task-draft";
-import {
-  addFixedCard,
-  readPage2,
-} from "../api/page2-store";
+import { createCapability, getPage2State } from "../api/page2-api";
 import styles from "../styles/knowledge.module.css";
 
 // 知识详情（第二页自带，替代 legacy 那份）。
 // 改动点只有一个：**原来底部那个灰按钮"当前没有可推进任务"变成了两个真动作**——
-//   ① 用它做个任务：生成一张任务草稿，真的写进任务列表，并带上这张知识
-//   ② 固化成能力卡：生成一张能力卡（Lv.1），回到能力货架就能看到它，知识卡上留下"已固化为"
+//   ① 用它做个任务：把资料作为来源创建持久任务草稿
+//   ② 固化成能力卡：保存并启用本人可使用的工具
 export function KnowledgeDetailPage({
   item,
   go,
@@ -29,11 +26,11 @@ export function KnowledgeDetailPage({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [drafted, setDrafted] = useState(false);
-  const store = readPage2();
-  const fixedTitle = store.fixedFrom[item.id];
+  const fixedTitle = getPage2State().data.skills?.find(skill => skill.title === item.title)?.title;
 
-  const useIt = () => {
-    draftTask(setState, {
+  const useIt = async () => {
+    try {
+    const id = await draftTask(setState, {
       title: `用「${item.title}」做一件事`,
       brief: item.purpose,
       source: `知识 · ${item.title}`,
@@ -41,23 +38,17 @@ export function KnowledgeDetailPage({
       knowledgeIds: [item.id],
     });
     setDrafted(true);
+    go({ name: "task", id });
+    } catch { setDrafted(false); }
   };
 
-  const fixIt = () => {
-    addFixedCard({
-      title: item.title,
-      type: "Skill",
-      dimension: "洞察",
-      // 卡面小字只讲"这张卡能干什么"；来源属于卡详情，不占卡面（按反馈去掉这个尾巴）
-      copy: item.purpose,
-      score: 60,
-      evidence: 0,
-      level: 1,
-      fromKnowledge: item.id,
-    });
-    setConfirming(false);
-    onBack();
-    go({ name: "knowledge" });
+  const fixIt = async () => {
+    try {
+      const created = await createCapability({ title: item.title, copyText: item.purpose, type: "Skill", owner: "探索" });
+      if (!created) return;
+      setConfirming(false);
+      go({ name: "knowledge" });
+    } catch { setConfirming(false); }
   };
 
   return (

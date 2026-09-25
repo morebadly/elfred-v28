@@ -187,26 +187,16 @@ export function KnowledgePage({
 
   const takeFile = async (file: File | null) => {
     if (!file) return;
-    if (livePendingMaterials !== null) {
-      const result = await importFile(file);
-      setImportHint(result ? `${result.material.title}：已收下，去下面确认它` : "这条没导进来，再试一次");
-    } else {
-      addPendingMaterial({ id: `m-file-${Date.now()}`, title: file.name, from: "选文件", kind: "file" });
-      setImportHint(`${file.name}：已收下，去下面确认它`);
-    }
+    const result = await importFile(file);
+    setImportHint(result ? `${result.material.title}：已保存到文档` : "仅支持 UTF-8 的 txt、md、csv、json 文件");
     setStoreVersion((version) => version + 1);
   };
 
   const takeLink = async () => {
     const url = window.prompt("粘贴链接（http:// 或 https://）");
     if (!url) return;
-    if (livePendingMaterials !== null) {
-      const result = await importLink(url);
-      setImportHint(result ? `${result.title}：已收下，去下面确认它` : "这个链接没抓到东西，换个试试");
-    } else {
-      addPendingMaterial({ id: `m-link-${Date.now()}`, title: "新导入的链接", from: "粘贴链接", kind: "link" });
-      setImportHint("粘贴链接：已收下，去下面确认它");
-    }
+    const result = await importLink(url);
+    setImportHint(result ? `${result.title}：链接已保存，正文尚未抓取` : "链接保存失败，请检查地址");
     setStoreVersion((version) => version + 1);
   };
 
@@ -820,6 +810,7 @@ export function KnowledgePage({
             <input
               ref={fileInputRef}
               type="file"
+              accept=".txt,.md,.csv,.json"
               hidden
               onChange={(event) => {
                 void takeFile(event.target.files?.[0] ?? null);
@@ -837,7 +828,6 @@ export function KnowledgePage({
                       void takeLink();
                       return;
                     }
-                    if (kind === "resume") setImportHint("挑一份简历，导完会一起更新记忆库");
                     fileInputRef.current?.click();
                   }}
                 >
@@ -926,33 +916,11 @@ export function KnowledgePage({
             go({ name: "evidence" });
           }}
           onCreateTask={async (card, goal) => {
-            // 「用它做一件事」＝**带着这张 skill 去干活**。
-            //
-            // ⚠️ 这里以前是坏的：只往本地状态塞了一条任务草稿（`state.tasks` 每次
-            // snapshot 刷新都被 `projectState` 重建 → 十几秒内蒸发），而"用哪张 skill"
-            // 写进了没人读的 `pendingSkill`；跳到对话页也没有会话对象，发不出任何东西。
-            //
-            // 现在：取**任务契约**（这条 skill 的步骤 / 你定过的规矩 / 验收点）→
-            // 真建一条任务（criteria / constraints 交给他那边的一等字段）→ 去那条任务。
-            // 确认 → 跑 → 验收 → 桥接回第二页，闭环就在这里合上。
+            // The saved tool opens its owning Agent's persistent chat with an editable prefill.
             const result = await launchWithSkill(runtime, card.title, goal);
-            if (!result.ok) {
-              // 我这边单独跑第二页（没有 runtime）时，保持原来的本地草稿行为
-              draftTask(setState, {
-                title: `用「${card.title}」做一件事`,
-                brief: card.copy,
-                source: `能力卡 · ${card.title}`,
-                agent: "explore",
-              });
-              setPendingSkill(card.title);
+            if (result.ok && result.system && result.prompt) {
               setSelectedCapability(null);
-              go({ name: "chat", id: "elfred" });
-              return { ok: true };
-            }
-            if (result.ok && result.conversationId) {
-              setPendingSkill(card.title);
-              setSelectedCapability(null);
-              go({ name: "chat", id: result.conversationId });
+              go({ name: "chat", id: result.system, prefill: result.prompt });
               return { ok: true };
             }
             return { ok: false, note: result.note };

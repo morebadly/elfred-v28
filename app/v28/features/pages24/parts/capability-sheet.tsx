@@ -20,8 +20,6 @@ import {
   LEVEL_EVIDENCE_GATE,
   evidenceRecords,
   readDimension,
-  readGap,
-  readGapLabel,
   readStage,
   type AbilityType,
 } from "../data/knowledge-data";
@@ -331,7 +329,7 @@ export function CapabilitySheet({
   // 跑完面板要跟着刷新：面板是用打开时的 card 快照渲染的，所以这里以 live store 里
   // 最新的那份为准（跑完 loadPage2 会把 /capabilities 拉一遍），别让用户看到旧数字。
   const liveCard = (live.data.capabilities ?? []).find((item) => item.title === card.title);
-  const shownScore = liveCard?.score ?? card.score;
+  const shownScore = liveCard?.score == null ? "待验证" : liveCard.score;
   const shownEvidence = liveCard?.evidence ?? card.evidence;
   const [running, setRunning] = useState(false);
   const [runNote, setRunNote] = useState("");
@@ -360,8 +358,8 @@ export function CapabilitySheet({
   // 档位名与"还差几项成果"**优先用后端给的**（`/capabilities` 里有 stage / gap / gapLabel）。
   // 前端这套本地表只当离线兜底：两边规则原来各写一份，改一边忘一边就会开始显示错数字。
   const stage = liveCard?.stage || readStage(card.level);
-  const gap = liveCard?.gap ?? readGap(card.level, card.evidence);
-  const gapLabel = liveCard?.gapLabel || readGapLabel(card.level, card.evidence);
+  const gap = liveCard?.gap ?? null;
+  const gapLabel = liveCard?.gapLabel || "依据真实使用和验收结果成长";
   const capLevel = readDimension(card.dimension)?.capLevel ?? 5;
   // 阶梯的**门槛与档位名以后端为准**（`/capabilities` 的 ladder）；本地那份只提供每档的"多给你什么"文案，
   // 以及离线时的兜底。这样门槛表就只有后端一份权威，不会再出现两边改不同步。

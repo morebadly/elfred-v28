@@ -514,13 +514,12 @@ export function V277App() {
     if (screen.name === "dimension") return <DimensionDetailPage id={screen.id} go={go} onBack={back}
       onCreateTask={async(card,goal)=>{
         const result=await launchWithSkill(runtime,card.title,goal);
-        if(!result.ok){draftTask(setState,{title:`用「${card.title}」做一件事`,brief:card.copy,source:`能力卡 · ${card.title}`,agent:'explore'});return {ok:true};}
-        if(result.conversationId){go({name:'chat',id:result.conversationId});return {ok:true};}
+        if(result.ok&&result.system&&result.prompt){go({name:'chat',id:result.system,prefill:result.prompt});return {ok:true};}
         return {ok:false,note:result.note};
       }} onUpgrade={card=>setCardLevel(card.title,card.level+1)}/>;
     if (screen.name === "ability-profile") return <AbilityProfilePage go={go} onBack={back}/>;
     if (screen.name === "chat" && runtime && ['explore','advisor','create','connect','execute'].includes(screen.id))
-      return <AgentConversationPage id={screen.id as 'explore'|'advisor'|'create'|'connect'|'execute'} go={go} onBack={back}/>;
+      return <AgentConversationPage id={screen.id as 'explore'|'advisor'|'create'|'connect'|'execute'} go={go} onBack={back} prefill={screen.prefill}/>;
     if (screen.name === "chat")
       return (
         <ChatPage

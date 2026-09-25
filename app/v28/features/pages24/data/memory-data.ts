@@ -50,24 +50,19 @@ export type MemoryPageView = {
   memories: MemoryRowView[];
 };
 
-const RELATIONSHIPS: RelationshipView[] = [
-  { id: "mia", name: "Mia", role: "产品共创", photo: "person-mia", chatId: "person-mia" },
-  { id: "kevin", name: "Kevin", role: "技术合作", photo: "person-kevin", chatId: "person-kevin" },
-  { id: "lena", name: "Lena", role: "市场增长", photo: "person-lena", chatId: "person-lena" },
-];
+const RELATIONSHIPS: RelationshipView[] = [];
 
 const IDENTITY = {
   headline: "当前身份",
-  describe:
-    "正在打造帮助用户发现机会并完成价值交付的 Personal Agent。",
-  photoLabel: "产品负责人",
+  describe: "还没有确认的身份信息",
+  photoLabel: "",
   rule: "用于机会推荐，可随时纠正",
 };
 
 const UNDERSTANDING = {
   headline: "Elfred 对你的当前理解",
-  daysTracked: 7,
-  credibility: 94,
+  daysTracked: 0,
+  credibility: 0,
 };
 
 // 真数据一到就换上（页头理解度、当前身份、关系链都跟着后端走）；
@@ -116,7 +111,7 @@ export function buildMemoryView(memories: V277Memory[]): MemoryPageView {
     // 注意：这里不能写 `LIVE?.relationships.length ? … : 演示`。
     // 后端返回"空关系链"是一个真结果，不是"没数据"——写成前者会让空库又冒出三个人来。
     relationships: LIVE ? LIVE.relationships : RELATIONSHIPS,
-    relationshipStats: LIVE ? LIVE.relationshipStats : { longTerm: 8, pending: 12 },
+    relationshipStats: LIVE ? LIVE.relationshipStats : { longTerm: 0, pending: 0 },
     memories: rows,
   };
 }

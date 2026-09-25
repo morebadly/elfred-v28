@@ -1,18 +1,14 @@
 "use client";
 
-// 第二页 · 真接口客户端（能力库 / 知识库 / 记忆库 / 理解度）。
-//
-// 三条规矩：
-//   1. 接口够不着不能让页面白屏：这次拿不到就继续用前端那份演示数据，页面照常能看能点；
-//   2. 拿到真数据后各数据层"就地替换"，视图一行都不用动；
-//   3. 数字都由后端算，前端不自己编——前端只负责画。
-//
-// 地址：NEXT_PUBLIC_PAGE2_API（默认 http://127.0.0.1:8000）。
-// 想强制看演示数据：地址后面不带 ?live，或者把环境变量留空。
+// Second/fourth page projection of the authenticated V28 runtime.
+// The independent page2 backend described in the source PR was not shipped.
+// Unsupported analytic actions return an unavailable result; real objects and commands
+// are read from the existing session and never replaced with sample user data.
 
 import { useEffect, useSyncExternalStore } from "react";
+import type { Entity, Snapshot } from "../../live/types";
 
-export const PAGE2_API = (process.env.NEXT_PUBLIC_PAGE2_API ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
+export const PAGE2_API = "/api/elfred";
 
 /**
  * 预留功能的开关（**默认关，界面不展示**）。
@@ -34,7 +30,7 @@ export type LiveCapability = {
   title: string;
   copy: string;
   owner: string;
-  score: number;
+  score: number | null;
   evidence: number;
   level: number;
   stage: string;
@@ -169,9 +165,6 @@ const EMPTY_DATA: Page2Data = {
 const INITIAL: Store = { status: "loading", data: EMPTY_DATA, reason: "" };
 
 let store: Store = INITIAL;
-let started = false;
-/** 拉取序号：只让最新那次落地（见 loadPage2） */
-let loadSeq = 0;
 const listeners = new Set<() => void>();
 
 // ── 当前用户 ────────────────────────────────────────────────────────────────
@@ -181,9 +174,91 @@ const listeners = new Set<() => void>();
 // 由 `core/page2-identity.tsx`（挂在 RuntimeProvider 里）把当前 handle 推下来。
 // 空值 = 不带这个头，后端退回它自己的 `DEMO_USER_ID`（单用户本地跑时的旧行为）。
 let activeUser = "";
+let activeSnapshot: Snapshot | null = null;
+let activeCommand: ((action: string, input: Record<string, unknown>) => Promise<unknown>) | null = null;
+
+const field = (item: Entity | undefined, key: string) => String(item?.data[key] ?? "");
+const list = (snapshot: Snapshot, type: string) => snapshot.objects[type] ?? [];
+const active = (item: Entity) => !["archived", "deleted", "superseded", "rejected"].includes(field(item, "status"));
+const agentName: Record<string, string> = { explore: "探索", advise: "参谋", create: "创作", connect: "连接", execute: "执行" };
+
+function projectSnapshot(snapshot: Snapshot): Page2Data {
+  const tools = list(snapshot, "skill").filter(active);
+  const outcomes = list(snapshot, "outcome").filter(item => item.data.verdict === "accepted");
+  const tasks = new Map(list(snapshot, "task").map(item => [item.id, item]));
+  const knowledge = list(snapshot, "knowledge").filter(active);
+  const memories = list(snapshot, "memory").filter(item => active(item) && !item.data.hidden);
+  const documents = list(snapshot, "document").filter(active);
+  const capabilities: LiveCapability[] = tools.map(tool => {
+    const uses = list(snapshot, "tool_use").filter(item => item.data.tool_id === tool.id && item.data.kind === "use").length;
+    const accepted = outcomes.filter(item => tasks.get(field(item, "task_id"))?.data.skill_id === tool.id).length;
+    return { id: tool.id, type: field(tool, "kind") || "Skill", dimension: "未标注", title: field(tool, "title"),
+      copy: field(tool, "instructions").slice(0, 160), owner: agentName[field(tool, "system")] || "执行",
+      score: null, evidence: accepted, level: 1, stage: "待验证", gapLabel: "依据真实使用和验收结果成长", verified: accepted > 0,
+      ladder: [{ level: 1, stage: "待验证", gate: 0 }] };
+  });
+  const evidence: LiveEvidenceDetail[] = outcomes.map(item => {
+    const task = tasks.get(field(item, "task_id"));
+    const artifact = knowledge.find(entry => entry.data.outcome_id === item.id);
+    const title = field(task, "title") || "已验收成果";
+    return { id: item.id, title, note: field(artifact, "content").slice(0, 240), kind: "outcome", kindLabel: "已验收成果",
+      weightLabel: "本人验收", day: new Date(item.created).toDateString() === new Date().toDateString() ? "今天" : new Date(item.created).toLocaleDateString("zh-CN"),
+      time: new Date(item.created).toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      source: { label: "真实任务", note: title, ref: { kind: "task", id: task?.id || "" } },
+      summary: field(artifact, "content") || title, agent: agentName[field(task, "system")] || "执行", verified: true,
+      verdict: "confirmed", impacts: [] };
+  });
+  const groups: LiveMemory["groups"] = { 基础: [], 社交: [], 习惯: [], 偏好: [] };
+  for (const item of memories) {
+    const group = "偏好";
+    groups[group].push({ id: item.id, group, label: field(item, "scope"), value: field(item, "content"),
+      source: (item.data.source_refs as unknown[] | undefined)?.length ? "有来源" : "本人记录", status: field(item, "status") === "validated" ? "已确认" : "待确认" });
+  }
+  const confirmed = memories.filter(item => item.data.status === "validated").length;
+  const friends = list(snapshot, "friend").filter(item => item.data.status === "accepted");
+  return { capabilities, todayEvidence: evidence.filter(item => item.day === "今天").map(item => ({ id: item.id, title: item.title, note: item.note,
+      kind: item.kind, verdict: item.verdict, day: item.day })), evidence,
+    insight: { axes: ["洞察", "判断", "表达", "链接", "交付"].map(label => ({ label, value: null, previous: null })), composite: null,
+      previousComposite: null, outcomeCount: outcomes.length, externalChecks: 0, trend: null },
+    alignment: { alignment: 0, level: 1, stage: "待验证", nextGate: null, confirmedMemories: confirmed, credibility: 0, externalChecks: 0 },
+    memory: { headline: "Elfred 对你的当前理解", totalCount: memories.length, coveredGroups: memories.length ? 1 : 0,
+      groupCount: 4, daysTracked: 0, credibility: 0, groups,
+      identity: { headline: "当前身份", describe: "还没有确认的身份信息", photoLabel: "", rule: "用于机会推荐，可随时纠正" },
+      relationships: friends.map(item => ({ id: item.id, name: field(item, "name") || field(item, "handle"), role: "好友", photo: "", chatId: field(item, "conversation_id") })),
+      relationshipStats: { longTerm: friends.length, pending: 0 } },
+    documents: [...documents, ...knowledge].map(item => ({ id: item.id, name: field(item, "title"), status: field(item, "status"), excerpt: field(item, "content").slice(0, 200) })),
+    pending: [], skills: tools.map(tool => ({ name: tool.id, title: field(tool, "title"), summary: field(tool, "instructions").slice(0, 160),
+      ownerAgent: field(tool, "system"), dimension: "", steps: [field(tool, "instructions")].filter(Boolean),
+      canDo: [field(tool, "instructions")].filter(Boolean), stepCount: field(tool, "instructions") ? 1 : 0,
+      inputs: [], outputs: [], hasExamples: false,
+      files: [], updatedAt: tool.updated })) };
+}
+
+/** The merged pages share the authenticated application snapshot; no second identity header is trusted. */
+export function setPage2Runtime(snapshot: Snapshot | null, command: typeof activeCommand) {
+  const nextUser = snapshot?.user.id ?? "";
+  if (nextUser !== activeUser) {
+    activeUser = nextUser;
+    activeSnapshot = null;
+    publish({ status: "loading", data: EMPTY_DATA, reason: "identity_changed" });
+  }
+  activeCommand = command;
+  activeSnapshot = snapshot;
+  if (snapshot) publish({ status: "ready", data: projectSnapshot(snapshot), reason: "shared_runtime" });
+  else publish({ status: "loading", data: EMPTY_DATA, reason: "signed_out" });
+}
 
 export function getPage2User() {
   return activeUser;
+}
+
+export async function createPage2Task(input: { title: string; brief: string; agent: string; knowledgeIds?: string[] }) {
+  if (!activeCommand || !activeSnapshot) throw new Error("请先登录再创建任务");
+  const source_refs = (input.knowledgeIds ?? []).map(id => activeSnapshot!.objects.knowledge?.find(item => item.id === id))
+    .filter((item): item is Entity => Boolean(item)).map(item => ({ id: item.id, version: item.version }));
+  const system = input.agent === "advisor" ? "advise" : input.agent;
+  return activeCommand("task.create", { goal: `${input.title}：${input.brief}`.slice(0, 8000), criteria: "根据所选知识或工具交付可核对的结果，由本人验收",
+    system, mode: "compose", source_refs });
 }
 
 /**
@@ -205,8 +280,12 @@ export type TaskContract = {
 };
 
 export async function fetchContract(skillName: string, goal = ""): Promise<TaskContract | null> {
-  const query = new URLSearchParams({ skill: skillName, goal });
-  return request<TaskContract>(`/page2/contract?${query.toString()}`, undefined, 15000);
+  const tool = activeSnapshot?.objects.skill?.find(item => item.id === skillName || item.data.title === skillName);
+  if (!tool) return null;
+  const instructions = field(tool, "instructions");
+  return { ok: true, goal, system: field(tool, "system") || "execute", criteria: "按工具说明交付可核对的结果",
+    constraints: instructions, memories: [], skill: { name: tool.id, title: field(tool, "title"), steps: [], rules: [instructions] },
+    note: "来自本人已保存的工具版本" };
 }
 
 /**
@@ -214,13 +293,7 @@ export async function fetchContract(skillName: string, goal = ""): Promise<TaskC
  * 看到 A 的东西（串号）。这是本地跑两个账号测出来的。
  */
 export function setPage2User(handle: string | null | undefined) {
-  const next = (handle ?? "").trim();
-  if (next === activeUser) return;
-  activeUser = next;
-  started = false;
-  store = INITIAL;
-  for (const listener of listeners) listener();
-  if (next) void loadPage2(true);
+  if (!handle) setPage2Runtime(null, null);
 }
 /** 各数据层登记的"把真数据就地换上去"的函数：先换数据，再让 React 重渲染 */
 const projectors: {
@@ -286,25 +359,8 @@ export function liveCardId(title: string): string | null {
 // ⚠️ 超时不能写死：原来固定 6 秒，导致「真跑一次 skill」（要 40~60 秒）永远被当成失败，
 // 页面还会误报"没跑通"；慢接口也会被当作"后端够不着"而退回演示数据。改成按调用给。
 async function request<T>(path: string, init?: RequestInit, timeoutMs = 20000): Promise<T | null> {
-  try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    // 带上"我是谁"：后端按它取这个用户的数据。没登录（空）就不带，后端用默认用户。
-    const identity: Record<string, string> = activeUser ? { "X-Elfred-User": activeUser } : {};
-    const response = await fetch(`${PAGE2_API}${path}`, {
-      ...init,
-      signal: controller.signal,
-      headers: init?.body instanceof FormData
-        ? { ...identity, ...init?.headers }
-        : { "content-type": "application/json", ...identity, ...init?.headers },
-      cache: "no-store",
-    });
-    clearTimeout(timer);
-    if (!response.ok) return null;
-    return (await response.json()) as T;
-  } catch {
-    return null;
-  }
+  void path; void init; void timeoutMs;
+  return null;
 }
 
 function post<T>(path: string, body: unknown, timeoutMs = 20000) {
@@ -318,43 +374,8 @@ function post<T>(path: string, body: unknown, timeoutMs = 20000) {
  * 允许把结果写进 store —— 否则换人前那次晚回来，会把上一个人的数据盖在页面上（串号）。
  */
 export async function loadPage2(force = false): Promise<Store> {
-  if (started && !force) return store;
-  started = true;
-  const seq = ++loadSeq;
-  const [capabilities, evidenceList, insight, alignment, memory, documents, pending, skills] = await Promise.all([
-    request<LiveCapability[]>("/capabilities"),
-    request<LiveEvidence[]>("/evidence"),
-    request<LiveInsight>("/insight/abilities"),
-    request<LiveAlignment>("/alignment"),
-    request<LiveMemory>("/memory"),
-    request<LiveDocument[]>("/documents"),
-    request<LivePending[]>("/materials/pending"),
-    request<LiveSkill[]>("/page2/skills"),
-  ]);
-
-  const reachable = Boolean(capabilities || insight || alignment || memory || evidenceList);
-  if (!reachable) {
-    console.warn(`[page2] 连不上后端（${PAGE2_API}），这一页先用演示数据顶着`);
-    if (seq === loadSeq) publish({ status: "offline", data: EMPTY_DATA, reason: "unreachable" });
-    return store;
-  }
-
-  const today = (evidenceList ?? []).filter((item) => item.day === "今天");
-  const details = await Promise.all(
-    (evidenceList ?? []).slice(0, 12).map((item) => request<LiveEvidenceDetail>(`/evidence/${item.id}`)),
-  );
-  const data: Page2Data = {
-    capabilities,
-    todayEvidence: evidenceList ? today : null,
-    evidence: evidenceList ? (details.filter(Boolean) as LiveEvidenceDetail[]) : null,
-    insight,
-    alignment,
-    memory,
-    documents,
-    pending,
-    skills,
-  };
-  if (seq === loadSeq) publish({ status: "ready", data, reason: "live" });
+  void force;
+  if (activeSnapshot) publish({ status: "ready", data: projectSnapshot(activeSnapshot), reason: "shared_runtime" });
   return store;
 }
 
@@ -375,31 +396,32 @@ export async function createCapability(input: {
   dimension?: string;
   owner?: string;
 }) {
-  if (!isLive()) return null;
-  const result = await post<LiveCapability>("/capabilities", {
-    title: input.title,
-    copyText: input.copyText ?? "",
-    type: input.type ?? "Skill",
-    dimension: input.dimension ?? "洞察",
-    owner: input.owner ?? "探索",
-  });
-  if (result) await loadPage2(true);
-  return result;
+  if (!activeCommand) return null;
+  const system = ({ 探索: "explore", 参谋: "advise", 创作: "create", 连接: "connect", 执行: "execute" } as Record<string, string>)[input.owner ?? "探索"] || "explore";
+  const saved = await activeCommand("tool.save", { title: input.title, instructions: input.copyText || input.title,
+    kind: input.type || "Skill", system }) as { id: string; version: number };
+  await activeCommand("tool.activate", { id: saved.id, version: saved.version });
+  await loadPage2(true);
+  return { id: saved.id, title: input.title };
 }
 
 export async function importFile(file: File) {
-  const form = new FormData();
-  form.append("file", file);
-  const result = await request<{ material: { title: string } }>("/materials/upload", { method: "POST", body: form });
-  if (result) await loadPage2(true);
-  return result;
+  if (!activeCommand || !/\.(txt|md|csv|json)$/i.test(file.name)) return null;
+  try {
+    const content = await file.text();
+    await activeCommand("document.create", { title: file.name, content });
+    return { material: { title: file.name } };
+  } catch { return null; }
 }
 
 /** 粘贴链接导入 */
 export async function importLink(url: string) {
-  const result = await post<{ title: string }>("/materials/link", { url });
-  if (result) await loadPage2(true);
-  return result;
+  if (!activeCommand || !/^https?:\/\//i.test(url)) return null;
+  try {
+    const title = new URL(url).hostname;
+    await activeCommand("resource.create", { title, content: url });
+    return { title };
+  } catch { return null; }
 }
 
 /** Agent 把一件事干完了 → 写一条成果（任务那条线接上之前的触发点，也是演示用） */
@@ -501,27 +523,42 @@ export type LiveHygiene = {
 
 /** 个人页资料（读） */
 export function fetchProfile() {
-  return request<LiveProfile>("/page2/profile");
+  const profile = activeSnapshot?.objects.profile?.[0];
+  if (!profile) return Promise.resolve(null);
+  return Promise.resolve<LiveProfile>({ available: true, name: field(profile, "name"), bio: field(profile, "bio"),
+    tags: Array.isArray(profile.data.tags) ? profile.data.tags as string[] : [], avatar: field(profile, "avatar"),
+    background: field(profile, "cover"), headline: "", level: null, daysTracked: null, credibility: null,
+    identityDescribe: "", filled: Boolean(field(profile, "name")) });
 }
 
 /** 个人页资料（写）：存完把后端回的那份直接给调用方用，避免前端自己拼 */
-export function saveProfile(patch: Partial<Pick<LiveProfile, "name" | "bio" | "tags" | "avatar" | "background">>) {
-  return request<{ ok: boolean; saved: string[]; profile: LiveProfile }>("/page2/profile", {
-    method: "PATCH",
-    body: JSON.stringify(patch),
-  });
+export async function saveProfile(patch: Partial<Pick<LiveProfile, "name" | "bio" | "tags" | "avatar" | "background">>) {
+  const profile = activeSnapshot?.objects.profile?.[0];
+  if (!profile || !activeCommand) return null;
+  await activeCommand("profile.save", { id: profile.id, version: profile.version, name: patch.name ?? field(profile, "name"),
+    bio: patch.bio ?? field(profile, "bio"), tags: patch.tags ?? profile.data.tags ?? [],
+    ...(patch.avatar !== undefined ? { avatar: patch.avatar } : {}),
+    ...(patch.background !== undefined ? { cover: patch.background } : {}) });
+  return { ok: true, saved: Object.keys(patch), profile: await fetchProfile() };
 }
 
 export function fetchFeed() {
-  return request<{ items: LiveFeedItem[]; count: number }>("/page2/feed");
+  const items: LiveFeedItem[] = (activeSnapshot?.objects.feed ?? []).filter(active).map(item => ({
+    kind: "evidence", id: item.id, title: field(item, "title"), detail: field(item, "summary"),
+    at: item.created, verdict: "confirmed" }));
+  return Promise.resolve({ items, count: items.length });
 }
 
 export function fetchBadges() {
-  return request<{ badges: LiveBadge[]; count: number; topLevel: number; evidence: number }>("/page2/badges");
+  const evidence = (activeSnapshot?.objects.outcome ?? []).filter(item => item.data.verdict === "accepted").length;
+  return Promise.resolve({ badges: [] as LiveBadge[], count: 0, topLevel: 0, evidence });
 }
 
 export function fetchRelationships() {
-  return request<{ available: boolean; relationships: LiveRelationship[]; count: number }>("/page2/relationships");
+  const relationships: LiveRelationship[] = (activeSnapshot?.objects.friend ?? []).filter(item => item.data.status === "accepted")
+    .map(item => ({ id: item.id, name: field(item, "name") || field(item, "handle"), role: "好友", stage: "已连接",
+      photo: "", chatId: field(item, "conversation_id") }));
+  return Promise.resolve({ available: true, relationships, count: relationships.length });
 }
 
 /** 记忆体检：长期未用 / 低置信 / 没标签 / 冲突（只读，不改任何东西） */

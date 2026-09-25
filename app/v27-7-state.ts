@@ -189,19 +189,12 @@ const DEMO_IDENTITY = {
 function dropStoredDemoIdentity(
   profile: V277State["profile"],
 ): V277State["profile"] {
-  const next = { ...profile };
-  if (next.name === DEMO_IDENTITY.name) next.name = "";
-  if (next.username === DEMO_IDENTITY.username) next.username = "";
-  if (next.role === DEMO_IDENTITY.role) next.role = "";
-  if (next.bio === DEMO_IDENTITY.bio) next.bio = "";
-  if (next.focus === DEMO_IDENTITY.focus) next.focus = "";
-  if (
-    next.tags.length === DEMO_IDENTITY.tags.length &&
-    next.tags.every((tag, index) => tag === DEMO_IDENTITY.tags[index])
-  ) {
-    next.tags = [];
-  }
-  return next;
+  const exactSeed = (Object.keys(DEMO_IDENTITY) as Array<keyof typeof DEMO_IDENTITY>).every((key) =>
+    key === "tags"
+      ? profile.tags.length === DEMO_IDENTITY.tags.length && profile.tags.every((tag, index) => tag === DEMO_IDENTITY.tags[index])
+      : profile[key] === DEMO_IDENTITY[key],
+  );
+  return exactSeed ? { ...profile, name: "", username: "", role: "", bio: "", focus: "", tags: [] } : profile;
 }
 
 export function createInitialV277State(): V277State {

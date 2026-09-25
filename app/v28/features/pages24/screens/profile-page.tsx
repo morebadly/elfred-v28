@@ -2,7 +2,6 @@
 
 import {
   useEffect,
-  useRef,
   useState,
   type Dispatch,
   type SetStateAction,
@@ -30,8 +29,6 @@ import { launchWithSkill } from "../api/skill-launch";
 import {
   fetchBadges,
   fetchFeed,
-  fetchProfile,
-  saveProfile,
   usePage2Live,
   type LiveBadge,
   type LiveFeedItem,
@@ -57,7 +54,7 @@ export function ProfilePage({
   const profile = state.profile;
   // ⚠️ 必须订阅/启动第二页的数据：不然"先打开『我的』"时后端根本不会被调用，
   // 能力栏会一直显示本地演示卡（实测踩到）。usePage2Live 既启动加载又订阅变更。
-  usePage2Live();
+  const page2 = usePage2Live();
   // 名字旁边那个胶囊跟"理解度"那条线（不是卡片等级）。
   // 后端没给理解度时按第一档显示——**不能拿演示兜底值当用户真等级**（新用户不是 Lv.4）。
   const level = hasLiveAlignment ? libraryHeader.level : 1;
@@ -77,65 +74,21 @@ export function ProfilePage({
   // 读：进页面拉一次真资料/动态/勋章；写：本地改过的资料回到这一页时同步给后端。
   const [feed, setFeed] = useState<LiveFeedItem[] | null>(null);
   const [badges, setBadges] = useState<LiveBadge[] | null>(null);
-  const loadedRef = useRef<string>("");
-
   useEffect(() => {
     let alive = true;
     void (async () => {
-      const [live, liveFeed, liveBadges] = await Promise.all([
-        fetchProfile(),
+      const [liveFeed, liveBadges] = await Promise.all([
         fetchFeed(),
         fetchBadges(),
       ]);
       if (!alive) return;
       if (liveFeed?.items) setFeed(liveFeed.items);
       if (liveBadges?.badges) setBadges(liveBadges.badges);
-      if (live?.available) {
-        // ⚠️ 这里踩过一个坑：一开始不管三七二十一"以后端为准"，结果**把用户刚在编辑页改的值覆盖掉了**
-        // （返回这一页时先拉后端 → 旧值盖掉新值 → 同步 effect 比较不出差异 → 不发 PATCH → 改动静默丢失）。
-        // 所以规则改成：**本地有值就以本地为准**（下面那个 effect 会把它 PATCH 上去）；
-        // 只有本地还是空的（新设备/新会话）才接受后端那份。
-        const localHasProfile = Boolean(profile.name || profile.bio || profile.tags.length);
-        loadedRef.current = JSON.stringify([live.name, live.bio, live.tags]);
-        if (!localHasProfile) {
-          setState((prev) => ({
-            ...prev,
-            profile: {
-              ...prev.profile,
-              name: live.name || prev.profile.name,
-              bio: live.bio || prev.profile.bio,
-              tags: live.tags.length ? live.tags : prev.profile.tags,
-            },
-          }));
-        }
-      }
     })();
     return () => {
       alive = false;
     };
-  }, [setState]);
-
-  // 编辑资料是公共层的界面（只改本地 state），所以回到这一页时把差异同步给后端——
-  // 这样"改了资料"才真的落库，而不是刷新就没。
-  useEffect(() => {
-    const snapshot = JSON.stringify([profile.name, profile.bio, profile.tags]);
-    if (!loadedRef.current || snapshot === loadedRef.current) return;
-    const timer = setTimeout(() => {
-      void saveProfile({
-        name: profile.name,
-        bio: profile.bio,
-        tags: profile.tags,
-      }).then((result) => {
-        if (result?.ok) {
-          loadedRef.current = snapshot;
-          notify("资料已保存");
-        } else {
-          notify("资料没能同步到后端，请稍后再试");
-        }
-      });
-    }, 600);
-    return () => clearTimeout(timer);
-  }, [profile.name, profile.bio, profile.tags, notify]);
+  }, [page2.data]);
   return (
     <main className="v277-page v277-profile-page">
       <section
@@ -331,22 +284,9 @@ export function ProfilePage({
             // 和知识库那边一致：带着这张 skill 的任务契约，建一条**真任务**。
             // 原来只跳对话，而对话页没有会话对象，什么都发不出去。
             const result = await launchWithSkill(runtime, card.title, goal);
-            if (!result.ok) {
-              draftTask(setState, {
-                title: `用「${card.title}」做一件事`,
-                brief: card.copy,
-                source: `能力卡 · ${card.title}`,
-                agent: "explore",
-              });
-              setPendingSkill(card.title);
+            if (result.ok && result.system && result.prompt) {
               setSelectedCard(null);
-              go({ name: "chat", id: "elfred" });
-              return { ok: true };
-            }
-            if (result.ok && result.conversationId) {
-              setPendingSkill(card.title);
-              setSelectedCard(null);
-              go({ name: "chat", id: result.conversationId });
+              go({ name: "chat", id: result.system, prefill: result.prompt });
               return { ok: true };
             }
             return { ok: false, note: result.note };

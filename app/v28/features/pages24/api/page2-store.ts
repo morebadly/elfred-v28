@@ -8,6 +8,7 @@
 // 接后端时把下面这些读函数换成接口即可，界面不用动。
 
 import type { AbilityType } from "../data/knowledge-data";
+import { getPage2User } from "./page2-api";
 
 export type EvidenceVerdict = "confirmed" | "disputed" | "forgotten";
 
@@ -55,6 +56,7 @@ type Page2Store = {
 // v1 → v2：旧版留下的本地状态（固化出来的卡、成果裁定、导入的简历…）在改版后已经和
 // 新结构对不上（比如卡面小字里还带着"（来自知识：…）"的尾巴），所以直接升版本号让旧数据作废。
 const KEY = "elfred.page2.v2";
+const storageKey = () => getPage2User() ? `${KEY}.${getPage2User()}` : null;
 const EMPTY: Page2Store = {
   verdicts: {},
   fixedCards: [],
@@ -69,7 +71,9 @@ const EMPTY: Page2Store = {
 export function readPage2(): Page2Store {
   if (typeof window === "undefined") return EMPTY;
   try {
-    const raw = window.localStorage.getItem(KEY);
+    const key = storageKey();
+    if (!key) return EMPTY;
+    const raw = window.localStorage.getItem(key);
     if (!raw) return EMPTY;
     return { ...EMPTY, ...(JSON.parse(raw) as Partial<Page2Store>) };
   } catch {
@@ -79,7 +83,8 @@ export function readPage2(): Page2Store {
 
 function writePage2(next: Page2Store) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, JSON.stringify(next));
+  const key = storageKey();
+  if (key) window.localStorage.setItem(key, JSON.stringify(next));
 }
 
 export function setEvidenceVerdict(id: string, verdict: EvidenceVerdict) {

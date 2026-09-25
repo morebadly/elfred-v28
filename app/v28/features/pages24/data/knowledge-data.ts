@@ -448,9 +448,8 @@ export const ALIGNMENT_UNLOCK = [
  * 用户点了之后产生的素材 → POST /materials { kind: file|link|resume }
  */
 export const IMPORT_SOURCES = [
-  { title: "选文件", note: "PDF / Word / 图片", kind: "file" },
-  { title: "粘贴链接", note: "文章、网页、公众号", kind: "link" },
-  { title: "导入简历", note: "同时更新记忆库里关于你的事实", kind: "resume" },
+  { title: "选文件", note: "UTF-8 文本 / Markdown / CSV / JSON", kind: "file" },
+  { title: "保存链接", note: "保存网址，不自动抓取正文", kind: "link" },
 ] as const;
 
 /* ── 文档库（导进来的原始文件）──────────────────────────────
@@ -637,7 +636,7 @@ function applyLiveCards(cards: LiveCapability[]) {
   for (const sample of abilityCardSamples) {
     const live = byTitle.get(sample.title);
     if (!live) continue;
-    sample.score = Math.round(live.score);
+    sample.score = Math.round(live.score ?? 0);
     sample.evidence = live.evidence;
     sample.level = live.level;
   }
@@ -648,5 +647,21 @@ export let livePendingMaterials: Page2Data["pending"] = null;
 
 /** 后端在跑（真数据已就位）。裁定、分数以后端为准，前端那份兜底不掺和。 */
 let liveMode = false;
+
+// The imported module carried sample cards and outcomes. A signed-in account must never
+// see them as its own history while the authenticated snapshot is loading.
+abilityCardSamples.length = 0;
+todayEvidence.length = 0;
+evidenceRecords.length = 0;
+documents.length = 0;
+abilityInsight.axes = abilityInsight.axes.map(axis => ({ ...axis, value: null, previous: null }));
+abilityInsight.composite = null;
+abilityInsight.previousComposite = null;
+abilityInsight.outcomeCount = 0;
+abilityInsight.externalChecks = 0;
+abilityInsight.trend = null;
+libraryHeader.alignment = 0;
+libraryHeader.level = 1;
+for (const profile of dimensionProfiles) { profile.score = null; profile.capLevel = 1; }
 
 registerProjector({ data: applyLiveData, cards: applyLiveCards });

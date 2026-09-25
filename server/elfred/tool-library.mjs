@@ -26,7 +26,8 @@ export function toolLibraryCommand(store,user,action,input){
     if(data.kind==='Mini App'&&data.parameters.length)fail('INVALID_PARAMETERS','Mini App 的输入请在页面内定义');
     const tool=previous?store.update(previous,{...previous.data,...data},user):store.add('skill',user,{...data,uses:0});
     const version=store.add('skill_version',user,{tool_id:tool.id,...data,revision:(previous?.data.revision||0)+1});
-    return {id:store.update(tool,{...tool.data,version_id:version.id,revision:version.data.revision},user).id};
+    const saved=store.update(tool,{...tool.data,version_id:version.id,revision:version.data.revision},user);
+    return {id:saved.id,version:saved.version};
   }
   if(action==='tool.activate'||action==='tool.archive'){
     const tool=store.expect(store.owned(user,input.id,'skill'),input.version);

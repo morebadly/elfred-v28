@@ -16,7 +16,7 @@ const prompts:Record<V277AgentId,string>={
   execute:'帮我拆解这件事的下一步',
 };
 
-export function AgentConversationPage({id,go,onBack}:{id:V277AgentId;go:(screen:Screen)=>void;onBack:()=>void}){
+export function AgentConversationPage({id,go,onBack,prefill}:{id:V277AgentId;go:(screen:Screen)=>void;onBack:()=>void;prefill?:string}){
   const runtime=useRuntime();
   const agent=agentList.find(item=>item.id===id)!;
   const Icon=agent.icon;
@@ -39,6 +39,8 @@ export function AgentConversationPage({id,go,onBack}:{id:V277AgentId;go:(screen:
   const drafts=(runtime?.snapshot?.objects.task||[]).filter(item=>item.data.agent_chat_draft_conversation_id===activeId&&item.data.status!=='archived').sort((a,b)=>b.created.localeCompare(a.created));
   const existingDrafts=(runtime?.snapshot?.objects.task||[]).filter(item=>item.data.system===systemOf(id)&&item.data.status==='draft'&&!item.data.agent_chat).sort((a,b)=>b.created.localeCompare(a.created));
   const lastHuman=[...messages].reverse().find(item=>item.data.actor_type==='human');
+
+  useEffect(()=>{if(prefill)setInput(current=>current.trim()?current:prefill);},[prefill]);
 
   useEffect(()=>{bottom.current?.scrollIntoView({block:'end'});},[activeId,messages.length,pending?.id]);
   useEffect(()=>{const field=composer.current;if(!field)return;field.style.height='auto';field.style.height=Math.min(field.scrollHeight,130)+'px';},[input]);

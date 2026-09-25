@@ -30,7 +30,7 @@ export { HonorGallery } from "./parts/honor-gallery";
 export { LibraryHeader } from "./parts/library-header";
 
 // ── 接缝要用到的接口 / 数据层 ────────────────────────────────────────
-export { loadPage2, setPage2User, fetchRelationships, usePage2Live } from "./api/page2-api";
+export { loadPage2, setPage2User, setPage2Runtime, fetchRelationships, usePage2Live } from "./api/page2-api";
 export type { LiveRelationship } from "./api/page2-api";
 export { setCardLevel } from "./api/page2-store";
 export { draftTask } from "./api/task-draft";

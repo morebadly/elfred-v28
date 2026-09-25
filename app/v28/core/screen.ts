@@ -35,7 +35,7 @@ export type Screen =
   | { name: "agent-moments"; id: V277AgentId }
   | { name: "agent-moment-detail"; id: V277AgentId; postId: string }
   | { name: "agent-settings"; id: V277AgentId }
-  | { name: "chat"; id: string; messageId?:string }
+  | { name: "chat"; id: string; messageId?:string; prefill?:string }
   | { name: "friend-profile"; id: string }
   | { name: "knowledge-detail"; id: string; anchor?:string }
   | { name: "memory-detail"; id: string }
