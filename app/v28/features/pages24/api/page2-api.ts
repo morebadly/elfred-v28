@@ -397,6 +397,8 @@ export async function createCapability(input: {
   owner?: string;
 }) {
   if (!activeCommand) return null;
+  const existing = activeSnapshot?.objects.skill?.find(item => item.data.title === input.title && item.data.status !== "archived");
+  if (existing) return { id: existing.id, title: input.title };
   const system = ({ 探索: "explore", 参谋: "advise", 创作: "create", 连接: "connect", 执行: "execute" } as Record<string, string>)[input.owner ?? "探索"] || "explore";
   const saved = await activeCommand("tool.save", { title: input.title, instructions: input.copyText || input.title,
     kind: input.type || "Skill", system }) as { id: string; version: number };

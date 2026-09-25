@@ -26,9 +26,11 @@ export function KnowledgeDetailPage({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [drafted, setDrafted] = useState(false);
+  const [error, setError] = useState("");
   const fixedTitle = getPage2State().data.skills?.find(skill => skill.title === item.title)?.title;
 
   const useIt = async () => {
+    setError("");
     try {
     const id = await draftTask(setState, {
       title: `用「${item.title}」做一件事`,
@@ -39,16 +41,17 @@ export function KnowledgeDetailPage({
     });
     setDrafted(true);
     go({ name: "task", id });
-    } catch { setDrafted(false); }
+    } catch (cause) { setDrafted(false); setError(cause instanceof Error ? cause.message : "任务暂时无法创建"); }
   };
 
   const fixIt = async () => {
+    setError("");
     try {
       const created = await createCapability({ title: item.title, copyText: (item.example || item.purpose).slice(0, 12000), type: "Skill", owner: "探索" });
       if (!created) return;
       setConfirming(false);
       go({ name: "knowledge" });
-    } catch { setConfirming(false); }
+    } catch (cause) { setConfirming(false); setError(cause instanceof Error ? cause.message : "能力暂时无法保存"); }
   };
 
   return (
@@ -90,6 +93,7 @@ export function KnowledgeDetailPage({
               固化成能力卡
             </button>
           </div>
+          {error && <p className={styles.note} role="alert">{error}</p>}
           {drafted && (
             <p className={styles.note}>
               已生成任务草稿，并带上这张知识 ·{" "}
@@ -120,9 +124,8 @@ export function KnowledgeDetailPage({
           <section className={styles.actionBox}>
             <Plus size={16} />
             <span>
-              <b>将生成一张能力卡</b>
-              名称：{item.title} · Lv.1 发现 · 归属探索 Agent · 来源「{item.source}」；
-              它会从 0 项成果开始，之后每做成一件事就往上长。
+              <b>保存为可用工具</b>
+              名称：{item.title} · 归属探索 Agent · 来源「{item.source}」。能力评分须以真实任务和本人验收的成果核对。
               <span className={styles.actions}>
                 <button type="button" className={styles.actionPrimary} onClick={fixIt}>
                   确认生成
