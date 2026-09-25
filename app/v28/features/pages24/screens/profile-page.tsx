@@ -223,7 +223,7 @@ export function ProfilePage({
                           {card.type} · Lv.{card.level} {readStage(card.level)}
                         </small>
                       </span>
-                      <em>{card.notRunYet ? "证据不足" : card.score}</em>
+                      <em>{card.notRunYet ? (card.evidence ? "待评估" : "证据不足") : card.score}</em>
                       <ChevronRight size={16} />
                     </button>
                   </li>

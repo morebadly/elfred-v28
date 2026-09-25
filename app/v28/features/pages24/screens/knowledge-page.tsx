@@ -36,8 +36,6 @@ import {
   documents,
   livePendingMaterials,
   readCardAdjustment,
-  readGap,
-  readGapLabel,
   readStage,
   todayEvidence,
   type EvidenceKind,
@@ -419,8 +417,7 @@ export function KnowledgePage({
               index,
             ) => {
               const stage = readStage(level);
-              const gap = readGap(level, evidence);
-              const gapLabel = readGapLabel(level, evidence);
+              const gapLabel = "依据真实成果逐步成长";
               return (
               <button
                 type="button"
@@ -431,7 +428,7 @@ export function KnowledgePage({
                     "--i": index,
                   } as CSSProperties
                 }
-                aria-label={`${title}：${dimension}维度，Lv.${level} ${stage}，${gapLabel}`}
+                aria-label={`${title}：${dimension}维度，${notRunYet ? "尚未评分" : `Lv.${level} ${stage}`}，${gapLabel}`}
                 onClick={() =>
                   setSelectedCapability({
                     type,
@@ -452,7 +449,7 @@ export function KnowledgePage({
                   </span>
                   <span className={styles.cardLevel}>
                     {/* 还没跑过的真 skill：不显示假等级，写清状态 */}
-                    {notRunYet ? "还没有跑过" : `Lv.${level} · ${stage}`}
+                    {notRunYet ? (evidence ? "待评估" : "尚无成果") : `Lv.${level} · ${stage}`}
                   </span>
                 </span>
                 <i className={`v277-ability-visual visual-${index}`}>
@@ -464,7 +461,7 @@ export function KnowledgePage({
                 <footer>
                   <strong>
                     {notRunYet ? (
-                      <em>证据不足</em>
+                      <em>{evidence ? "待评估" : "证据不足"}</em>
                     ) : (
                       <>
                         {score}
@@ -475,13 +472,6 @@ export function KnowledgePage({
                   <span>{evidence} 项成果</span>
                 </footer>
                 <span className={styles.cardGap}>
-                  <span className={styles.cardBar}>
-                    <span
-                      style={{
-                        width: `${Math.round(((gap?.have ?? evidence) / (gap?.goal ?? evidence + 1)) * 100)}%`,
-                      }}
-                    />
-                  </span>
                   <span className={styles.cardGapText}>{gapLabel}</span>
                 </span>
               </button>
