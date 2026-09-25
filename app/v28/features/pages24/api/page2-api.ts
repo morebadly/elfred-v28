@@ -188,7 +188,7 @@ function projectSnapshot(snapshot: Snapshot): Page2Data {
   const tasks = new Map(list(snapshot, "task").map(item => [item.id, item]));
   const knowledge = list(snapshot, "knowledge").filter(active);
   const memories = list(snapshot, "memory").filter(item => active(item) && !item.data.hidden);
-  const documents = list(snapshot, "document").filter(active);
+  const documents = [...list(snapshot, "document"), ...list(snapshot, "resource")].filter(active);
   const capabilities: LiveCapability[] = tools.map(tool => {
     const uses = list(snapshot, "tool_use").filter(item => item.data.tool_id === tool.id && item.data.kind === "use").length;
     const accepted = outcomes.filter(item => tasks.get(field(item, "task_id"))?.data.skill_id === tool.id).length;
@@ -254,7 +254,8 @@ export function getPage2User() {
 
 export async function createPage2Task(input: { title: string; brief: string; agent: string; knowledgeIds?: string[] }) {
   if (!activeCommand || !activeSnapshot) throw new Error("请先登录再创建任务");
-  const source_refs = (input.knowledgeIds ?? []).map(id => activeSnapshot!.objects.knowledge?.find(item => item.id === id))
+  const sources = ["knowledge", "document", "resource"].flatMap(type => activeSnapshot!.objects[type] ?? []);
+  const source_refs = (input.knowledgeIds ?? []).map(id => sources.find(item => item.id === id))
     .filter((item): item is Entity => Boolean(item)).map(item => ({ id: item.id, version: item.version }));
   const system = input.agent === "advisor" ? "advise" : input.agent;
   return activeCommand("task.create", { goal: `${input.title}：${input.brief}`.slice(0, 8000), criteria: "根据所选知识或工具交付可核对的结果，由本人验收",
