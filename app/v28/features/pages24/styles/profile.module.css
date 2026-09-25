@@ -1,0 +1,265 @@
+/* 个人页 hero：从"一张贴图"改成真元素后的样式（我自己的域，不动公共 CSS）。
+   目标：新用户进来是一块"待设置"的空白，而不是一个已经填好的假人。 */
+
+.hero {
+  position: relative;
+  height: 208px;
+  background: #eef1f5 !important;   /* 盖掉公共样式里可能带的背景图 */
+  background-image: none !important;
+  overflow: hidden;
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  /* 空的背景也要好看：淡蓝渐变 + 极淡网点纹理，读起来是"留白的品牌底"，不是"没做" */
+  background-image: radial-gradient(rgba(76, 110, 245, 0.07) 1px, transparent 1px),
+    linear-gradient(160deg, #eef3fb 0%, #e6ecf7 55%, #dfe7f4 100%);
+  background-size: 14px 14px, cover;
+}
+
+/* 背景提示：右上角一颗淡胶囊（正中挂一行虚字太突兀） */
+.coverHint {
+  position: absolute;
+  top: 62px;
+  right: 14px;
+  padding: 4px 11px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 4px rgba(23, 26, 29, 0.06);
+  color: #5b6570;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* 编辑资料：可见胶囊（原来那个是画在贴图里的） */
+.editHit {
+  position: absolute !important;
+  top: auto !important;
+  right: 14px;
+  bottom: 20px;
+  /* 公共样式里这颗是"透明点击区"，这里把它变成看得见的胶囊 */
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 6;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: auto !important;
+  height: 30px !important;
+  padding: 0 12px !important;
+  border: 1px solid rgba(23, 26, 29, 0.12) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  color: #171a1d !important;
+  font-size: 12px !important;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.levelChip {
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(23, 26, 29, 0.08);
+  color: #4b5563;
+  font-size: 10.5px;
+  font-weight: 600;
+  vertical-align: 2px;
+  white-space: nowrap;
+}
+
+.profileBlock {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 14px;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.avatar {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  width: 68px !important;
+  height: 68px !important;
+  border-radius: 50% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 默认头像：品牌色渐变 + 白色首字/白人形（GitHub / Slack 那套默认头像的路子） */
+  background: linear-gradient(140deg, #7b96ff 0%, #4c6ef5 100%) !important;
+  border: 2px solid #fff !important;
+  color: #fff !important;
+  font-size: 22px !important;
+  font-weight: 600;
+  box-shadow: 0 1px 6px rgba(23, 26, 29, 0.08);
+}
+
+.lines {
+  min-width: 0;
+  padding-bottom: 2px;
+  color: #171a1d;
+}
+
+.lines h1 {
+  margin: 0 0 2px;
+  font-size: 19px;
+  font-weight: 800;
+  color: #171a1d;
+}
+
+.handle {
+  margin: 0 0 4px;
+  font-size: 12px;
+  color: #8b939b;
+}
+
+.bio {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #6d7680;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.tags span {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.tagsEmpty {
+  border: 1px dashed #c3cbd6 !important;
+  background: transparent !important;
+  color: #9aa4b0 !important;
+}
+
+.stats {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: #8b939b;
+}
+
+.stats b {
+  margin-right: 3px;
+  font-size: 13px;
+  color: #171a1d;
+}
+
+/* 动态流（真数据：后端把真实成果与真实记忆按时间合并） */
+.feed {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feedItem {
+  padding: 12px 14px;
+  border: 1px solid #e8eaee;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.feedItem b {
+  display: block;
+  font-size: 14px;
+  color: #171a1d;
+}
+
+.feedItem p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #5c626b;
+}
+
+.feedMeta {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #9aa0a6;
+}
+
+/* ── 能力 tab：把用户的能力卡直接摆在这一页 ─────────────────────
+   以前这里只有一张"去知识库看看"的跳转卡，等于第四页什么都看不见。 */
+.cardList {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cardList button {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 12px;
+  border: 1px solid #e8eaee;
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+}
+
+.cardList button:active {
+  transform: scale(0.99);
+}
+
+.cardList i {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: #f2f5fa;
+  color: #5b6b86;
+}
+
+.cardList span {
+  min-width: 0;
+}
+
+.cardList b {
+  display: block;
+  overflow: hidden;
+  color: #171a1d;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardList small {
+  display: block;
+  margin-top: 2px;
+  color: #8b939b;
+  font-size: 11.5px;
+}
+
+.cardList em {
+  color: #171a1d;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.cardList svg {
+  color: #b6bdc4;
+}

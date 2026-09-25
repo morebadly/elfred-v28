@@ -23,9 +23,9 @@ import {
 import { HomePage } from "../features/home/home-page";
 import { FeedDetailPage } from "../features/home/feed-detail-page";
 import { EveningReflectionPage } from "../features/home/evening-reflection-page";
-import { KnowledgePage } from "../features/knowledge/knowledge-page";
+import {AbilityProfilePage,DimensionDetailPage,draftTask,EvidenceDetailPage,EvidenceListPage,KnowledgePage,launchWithSkill,MemoryPage,ProfilePage,setCardLevel} from "../features/pages24";
 import { MessagesPage } from "../features/messages/messages-page";
-import { ProfilePage } from "../features/profile/profile-page";
+import {Page2Identity} from "./page2-identity";
 import type { Screen } from "./screen";
 import {
   AgentExperiencePage,
@@ -45,7 +45,6 @@ import {
   KnowledgeDetail,
   LoginPage,
   MemoryDetail,
-  MemoryPage,
   MyToolsPage,
   NewTaskPage,
   OnboardingComplete,
@@ -68,7 +67,7 @@ import {
   v277Posts,
 } from "../legacy/legacy-ui";
 
-export default function ConnectedV28() { return <RuntimeProvider><V277App /></RuntimeProvider>; }
+export default function ConnectedV28() { return <RuntimeProvider><Page2Identity/><V277App /></RuntimeProvider>; }
 
 export function V277App() {
   const runtime=useRuntime();
@@ -475,7 +474,7 @@ export function V277App() {
       );
     }
     if (screen.name === "knowledge")
-      return <KnowledgePage state={state} go={go} />;
+      return <KnowledgePage state={state} go={go} setState={setState} runtime={runtime} />;
     if (screen.name === "knowledge-detail") {
       const entity=runtime?.snapshot&&Object.values(runtime.snapshot.objects).flat().find(entry=>entry.id===screen.id);
       const item = runtime?(entity?{id:entity.id,title:entityText(entity,'title')||entity.type,purpose:entity.type==='knowledge'?'本人保存的知识资料':'本人当前可读取的资料',source:entity.type+' · '+new Date(entity.created).toLocaleString('zh-CN'),status:runtimeStatuses[entityText(entity,'status')]||entityText(entity,'status'),example:entityText(entity,'content')||entityText(entity,'text')||entityText(entity,'goal')}:undefined):v277Knowledge.find((entry) => entry.id === screen.id);
@@ -490,7 +489,7 @@ export function V277App() {
           notify={notify}
         />
       ) : (
-        <KnowledgePage state={state} go={go} />
+        <KnowledgePage state={state} go={go} setState={setState} runtime={runtime} />
       );
     }
     if (screen.name === "memory") return <MemoryPage state={state} go={go} />;
@@ -510,6 +509,16 @@ export function V277App() {
     }
     if (screen.name === "messages")
       return <MessagesPage state={state} go={go} />;
+    if (screen.name === "evidence") return <EvidenceListPage go={go} onBack={back}/>;
+    if (screen.name === "evidence-detail") return <EvidenceDetailPage id={screen.id} go={go} onBack={back}/>;
+    if (screen.name === "dimension") return <DimensionDetailPage id={screen.id} go={go} onBack={back}
+      onCreateTask={async(card,goal)=>{
+        const result=await launchWithSkill(runtime,card.title,goal);
+        if(!result.ok){draftTask(setState,{title:`用「${card.title}」做一件事`,brief:card.copy,source:`能力卡 · ${card.title}`,agent:'explore'});return {ok:true};}
+        if(result.conversationId){go({name:'chat',id:result.conversationId});return {ok:true};}
+        return {ok:false,note:result.note};
+      }} onUpgrade={card=>setCardLevel(card.title,card.level+1)}/>;
+    if (screen.name === "ability-profile") return <AbilityProfilePage go={go} onBack={back}/>;
     if (screen.name === "chat" && runtime && ['explore','advisor','create','connect','execute'].includes(screen.id))
       return <AgentConversationPage id={screen.id as 'explore'|'advisor'|'create'|'connect'|'execute'} go={go} onBack={back}/>;
     if (screen.name === "chat")
@@ -552,6 +561,7 @@ export function V277App() {
           setState={setState}
           go={go}
           notify={notify}
+          runtime={runtime}
         />
       );
     if (screen.name === "profile-share")
@@ -561,6 +571,7 @@ export function V277App() {
           setState={setState}
           go={go}
           notify={notify}
+          runtime={runtime}
           initialShareOpen
         />
       );

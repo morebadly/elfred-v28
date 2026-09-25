@@ -1,0 +1,154 @@
+"use client";
+
+import { useState, type Dispatch, type SetStateAction } from "react";
+import { ArrowRight, BookOpen, ListChecks, Plus, Sparkles } from "lucide-react";
+import type { V277State } from "../../../../v27-7-state";
+import type { Screen } from "../../../core/screen";
+import { AppHeader, type KnowledgeItem } from "../../../legacy/legacy-ui";
+import { draftTask } from "../api/task-draft";
+import {
+  addFixedCard,
+  readPage2,
+} from "../api/page2-store";
+import styles from "../styles/knowledge.module.css";
+
+// 知识详情（第二页自带，替代 legacy 那份）。
+// 改动点只有一个：**原来底部那个灰按钮"当前没有可推进任务"变成了两个真动作**——
+//   ① 用它做个任务：生成一张任务草稿，真的写进任务列表，并带上这张知识
+//   ② 固化成能力卡：生成一张能力卡（Lv.1），回到能力货架就能看到它，知识卡上留下"已固化为"
+export function KnowledgeDetailPage({
+  item,
+  go,
+  onBack,
+  setState,
+}: {
+  item: KnowledgeItem;
+  go: (screen: Screen) => void;
+  onBack: () => void;
+  setState: Dispatch<SetStateAction<V277State>>;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [drafted, setDrafted] = useState(false);
+  const store = readPage2();
+  const fixedTitle = store.fixedFrom[item.id];
+
+  const useIt = () => {
+    draftTask(setState, {
+      title: `用「${item.title}」做一件事`,
+      brief: item.purpose,
+      source: `知识 · ${item.title}`,
+      agent: "advisor",
+      knowledgeIds: [item.id],
+    });
+    setDrafted(true);
+  };
+
+  const fixIt = () => {
+    addFixedCard({
+      title: item.title,
+      type: "Skill",
+      dimension: "洞察",
+      // 卡面小字只讲"这张卡能干什么"；来源属于卡详情，不占卡面（按反馈去掉这个尾巴）
+      copy: item.purpose,
+      score: 60,
+      evidence: 0,
+      level: 1,
+      fromKnowledge: item.id,
+    });
+    setConfirming(false);
+    onBack();
+    go({ name: "knowledge" });
+  };
+
+  return (
+    <main className="v277-page">
+      <AppHeader title="知识详情" subtitle={item.source} onBack={onBack} />
+      <div className={styles.screen}>
+        <section className={styles.block}>
+          <h3>
+            <span className={styles.titleInline}>
+              <BookOpen size={16} />
+              {item.title}
+            </span>
+          </h3>
+          <p className={styles.quote}>{item.purpose}</p>
+          <div className={styles.chips}>
+            <span>{item.source}</span>
+            <span>{item.status}</span>
+          </div>
+        </section>
+
+        <section className={styles.block}>
+          <h3>使用示例</h3>
+          <p className={styles.note}>{item.example}</p>
+        </section>
+
+        {/* 这两个动作是这次补上的闭环 */}
+        <section className={styles.block}>
+          <h3>
+            用它
+            <small>看完就能动手，不用再去别处</small>
+          </h3>
+          <div className={styles.actions}>
+            <button type="button" className={styles.actionPrimary} onClick={useIt}>
+              <ListChecks size={17} />
+              用它做个任务
+            </button>
+            <button type="button" onClick={() => setConfirming(true)}>
+              <Sparkles size={17} />
+              固化成能力卡
+            </button>
+          </div>
+          {drafted && (
+            <p className={styles.note}>
+              已生成任务草稿，并带上这张知识 ·{" "}
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={() => go({ name: "tasks" })}
+              >
+                去任务里看
+              </button>
+            </p>
+          )}
+          {fixedTitle && (
+            <p className={styles.note}>
+              已固化为能力卡：{fixedTitle} ·{" "}
+              <button
+                type="button"
+                className={styles.linkBtn}
+                onClick={() => go({ name: "knowledge" })}
+              >
+                去能力货架看
+              </button>
+            </p>
+          )}
+        </section>
+
+        {confirming && (
+          <section className={styles.actionBox}>
+            <Plus size={16} />
+            <span>
+              <b>将生成一张能力卡</b>
+              名称：{item.title} · Lv.1 发现 · 归属探索 Agent · 来源「{item.source}」；
+              它会从 0 项成果开始，之后每做成一件事就往上长。
+              <span className={styles.actions}>
+                <button type="button" className={styles.actionPrimary} onClick={fixIt}>
+                  确认生成
+                </button>
+                <button type="button" onClick={() => setConfirming(false)}>
+                  先不要
+                </button>
+              </span>
+            </span>
+          </section>
+        )}
+
+        <p className={styles.trace}>
+          <ArrowRight size={14} />
+          知识是「能查阅、能套用」，能力是「能替你干」；反复套用并有结果之后，它就该固化成能力卡。
+        </p>
+      </div>
+    </main>
+  );
+}

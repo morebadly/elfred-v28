@@ -39,6 +39,11 @@ export type Screen =
   | { name: "friend-profile"; id: string }
   | { name: "knowledge-detail"; id: string; anchor?:string }
   | { name: "memory-detail"; id: string }
+  // 第二页（负责人 B）的四个二级屏
+  | { name: "evidence" }
+  | { name: "evidence-detail"; id: string }
+  | { name: "dimension"; id: string }
+  | { name: "ability-profile" }
   | {
       name: "utility";
       kind:

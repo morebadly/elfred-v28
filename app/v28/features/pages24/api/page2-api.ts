@@ -1,0 +1,628 @@
+"use client";
+
+// 第二页 · 真接口客户端（能力库 / 知识库 / 记忆库 / 理解度）。
+//
+// 三条规矩：
+//   1. 接口够不着不能让页面白屏：这次拿不到就继续用前端那份演示数据，页面照常能看能点；
+//   2. 拿到真数据后各数据层"就地替换"，视图一行都不用动；
+//   3. 数字都由后端算，前端不自己编——前端只负责画。
+//
+// 地址：NEXT_PUBLIC_PAGE2_API（默认 http://127.0.0.1:8000）。
+// 想强制看演示数据：地址后面不带 ?live，或者把环境变量留空。
+
+import { useEffect, useSyncExternalStore } from "react";
+
+export const PAGE2_API = (process.env.NEXT_PUBLIC_PAGE2_API ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
+
+/**
+ * 预留功能的开关（**默认关，界面不展示**）。
+ *
+ * 产品口径（2026-09-24 确认）：现阶段只做"让现有前端闭环"——把界面上已有的东西接上真实后端、
+ * 把降级和失败说清楚；**不新增功能入口**。下面这两个动作想法是好的，代码先留着，等产品要了再打开：
+ *   · 记忆体检（`memory-page.tsx` 里的「体检一遍 / 归档」）
+ *   · 卡片上的「真跑一次」（`capability-sheet.tsx`）
+ * 打开方式：把它改成 true（后端接口都在，随时可用）。
+ */
+export const SHOW_RESERVED_ACTIONS = false;
+
+export type LiveStatus = "loading" | "ready" | "offline";
+
+export type LiveCapability = {
+  id: string;
+  type: string;
+  dimension: string;
+  title: string;
+  copy: string;
+  owner: string;
+  score: number;
+  evidence: number;
+  level: number;
+  stage: string;
+  gap?: { have: number; goal: number; need: number } | null;
+  gapLabel: string;
+  /** 整条等级阶梯（等级 / 档位名 / 门槛成果数）——由后端给，前端不再自己存门槛表 */
+  ladder?: Array<{ level: number; stage: string; gate: number }>;
+  verified: boolean;
+};
+
+export type LiveEvidence = {
+  id: string;
+  title: string;
+  note: string;
+  kind: string;
+  verdict: string;
+  day: string;
+};
+
+export type LiveEvidenceDetail = {
+  id: string;
+  title: string;
+  note: string;
+  kind: string;
+  kindLabel: string;
+  weightLabel: string;
+  day: string;
+  time: string;
+  source: { label: string; note: string; ref: { kind: "task" | "chat"; id: string } };
+  summary: string;
+  agent: string;
+  verified: boolean;
+  verdict: string;
+  impacts: {
+    card: string;
+    capabilityId: string;
+    score: { from: number; to: number } | null;
+    evidence: { from: number; to: number } | null;
+    upgraded?: string | null;
+  }[];
+};
+
+export type LiveInsight = {
+  axes: { label: string; value: number | null; previous: number | null }[];
+  composite: number | null;
+  previousComposite: number | null;
+  outcomeCount: number;
+  externalChecks: number;
+  trend: { label: string; points: number[]; weeks: number; note: string } | null;
+};
+
+export type LiveAlignment = {
+  alignment: number;
+  level: number;
+  stage: string;
+  nextGate: number | null;
+  confirmedMemories: number;
+  credibility: number;
+  externalChecks: number;
+};
+
+export type LiveMemory = {
+  headline: string;
+  totalCount: number;
+  // 后端还在算这两个（四类记忆有着落几类）；界面这一版没展示，留着是因为接口里有，
+  // 以后要画"基础/社交/习惯/偏好"四个标签时直接用。
+  coveredGroups: number;
+  groupCount: number;
+  daysTracked: number;
+  credibility: number;
+  /** 四类记忆的实际条目（社交那一类装的是"人"，在 relationships 里） */
+  groups: Record<
+    string,
+    { id: string; group: string; label: string; value: string; source: string; status: string }[]
+  >;
+  identity: { headline: string; describe: string; photoLabel: string; rule: string };
+  relationships: { id: string; name: string; role: string; photo: string; chatId: string }[];
+  relationshipStats: { longTerm: number; pending: number };
+};
+
+export type LiveDocument = { id: string; name: string; status: string; excerpt?: string };
+export type LivePending = { id: string; kind: string; title: string; from: string; excerpt?: string };
+
+/** Skill Foundry 的产物（`existing\skills\<name>\`）——能力卡组的真数据源 */
+export type LiveSkill = {
+  name: string;
+  title: string;
+  summary: string;
+  /** SKILL.md 头部里的 owner_agent（哪个子 Agent 的 skill；目录里没有就是空串） */
+  ownerAgent?: string;
+  /** SKILL.md 头部里的 dimension（五个维度；目录里还没有这个字段时是空串，前端不许瞎猜） */
+  dimension?: string;
+  steps: string[];
+  /** 「它能替你做」：后端用 LLM 从这条 skill 的材料里提炼的几条人话（没有就是空数组） */
+  canDo?: string[];
+  /** 这条 skill 真实的步骤数；`steps` 只留了读得懂的，数量可能更少，写"N 步"要用这个 */
+  stepCount?: number;
+  /** 这条 skill 要什么输入（后端从 workflow.json 的 parameters 取，退回 SKILL.md 的 Inputs 小节） */
+  inputs?: string[];
+  /** 这条 skill 的验收标准（SKILL.md 的 Verification 小节） */
+  outputs?: string[];
+  hasExamples: boolean;
+  files: string[];
+  updatedAt: string;
+};
+
+export type Page2Data = {
+  capabilities: LiveCapability[] | null;
+  todayEvidence: LiveEvidence[] | null;
+  evidence: LiveEvidenceDetail[] | null;
+  insight: LiveInsight | null;
+  alignment: LiveAlignment | null;
+  memory: LiveMemory | null;
+  documents: LiveDocument[] | null;
+  pending: LivePending[] | null;
+  skills: LiveSkill[] | null;
+};
+
+type Store = { status: LiveStatus; data: Page2Data; reason: string };
+
+const EMPTY_DATA: Page2Data = {
+  capabilities: null,
+  todayEvidence: null,
+  evidence: null,
+  insight: null,
+  alignment: null,
+  memory: null,
+  documents: null,
+  pending: null,
+  skills: null,
+};
+const INITIAL: Store = { status: "loading", data: EMPTY_DATA, reason: "" };
+
+let store: Store = INITIAL;
+let started = false;
+/** 拉取序号：只让最新那次落地（见 loadPage2） */
+let loadSeq = 0;
+const listeners = new Set<() => void>();
+
+// ── 当前用户 ────────────────────────────────────────────────────────────────
+// 第二/四页的数据是**按用户分开存的**（`capabilities.user_id`、`memories.user_id`、
+// `profile_settings.user_id`、skill 的 frontmatter `user_id`），所以每个请求都要说
+// "我是谁"。这一层是普通模块，被知识页/个人页/记忆页共用，不能直接调 React hook ——
+// 由 `core/page2-identity.tsx`（挂在 RuntimeProvider 里）把当前 handle 推下来。
+// 空值 = 不带这个头，后端退回它自己的 `DEMO_USER_ID`（单用户本地跑时的旧行为）。
+let activeUser = "";
+
+export function getPage2User() {
+  return activeUser;
+}
+
+/**
+ * 任务契约：把「这条 skill 的步骤与规矩 + 相关记忆」组装成一次做事的执行条件。
+ *
+ * 为什么要有它：skill 的"真"不在于它是一张卡，在于**它能约束 agent 的行为**。
+ * 所以点「用它做一件事」时，skill 必须作为执行条件进场（步骤 / 你定过的规矩 / 验收点），
+ * 而不是只跳过去聊天。拿不到就返回 null，调用方退回原来的行为，不假装拿到了。
+ */
+export type TaskContract = {
+  ok: boolean;
+  goal: string;
+  system: string;
+  criteria: string;
+  constraints: string;
+  memories: string[];
+  skill: { name: string; title: string; steps: string[]; rules: string[] } | null;
+  note: string;
+};
+
+export async function fetchContract(skillName: string, goal = ""): Promise<TaskContract | null> {
+  const query = new URLSearchParams({ skill: skillName, goal });
+  return request<TaskContract>(`/page2/contract?${query.toString()}`, undefined, 15000);
+}
+
+/**
+ * 换人。**必须把上一个人的数据丢掉再重拉**：缓存里还留着 A 的卡，B 进来就会
+ * 看到 A 的东西（串号）。这是本地跑两个账号测出来的。
+ */
+export function setPage2User(handle: string | null | undefined) {
+  const next = (handle ?? "").trim();
+  if (next === activeUser) return;
+  activeUser = next;
+  started = false;
+  store = INITIAL;
+  for (const listener of listeners) listener();
+  if (next) void loadPage2(true);
+}
+/** 各数据层登记的"把真数据就地换上去"的函数：先换数据，再让 React 重渲染 */
+const projectors: {
+  data?: (data: Page2Data) => void;
+  cards?: (cards: LiveCapability[]) => void;
+}[] = [];
+
+export function subscribePage2(listener: () => void) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+export function registerProjector(projector: { data?: (data: Page2Data) => void; cards?: (cards: LiveCapability[]) => void }) {
+  projectors.push(projector);
+  if (store.status !== "loading") projectors.forEach((p) => p.data?.(store.data));
+}
+
+function publish(next: Store) {
+  store = next;
+  // 只有真拿到数据（ready）才动各数据层；offline 时前端继续用演示数据，
+  // 连"就地替换"都不做，免得把兜底那套算分逻辑关掉。
+  if (next.status === "ready") {
+    for (const projector of projectors) {
+      try {
+        projector.data?.(next.data);
+      } catch (error) {
+        console.warn("[page2] 数据层更新失败", error);
+      }
+    }
+  }
+  for (const listener of listeners) listener();
+}
+
+function publishCards(cards: LiveCapability[]) {
+  for (const projector of projectors) {
+    try {
+      projector.cards?.(cards);
+    } catch (error) {
+      console.warn("[page2] 卡片更新失败", error);
+    }
+  }
+  for (const listener of listeners) listener();
+}
+
+export function getPage2State() {
+  return store;
+}
+
+/** 后端在跑吗？在跑的话数字以后端为准，前端那份兜底就不要掺和了 */
+export function isLive() {
+  return store.status === "ready";
+}
+
+/** 按标题从后端那份数据里找卡 id。
+ *  不直接信弹层里的 card.id：那张卡对象在几层 map 里传过，id 容易在中间被丢掉；
+ *  标题是唯一的，用它回查后端那份最稳。 */
+export function liveCardId(title: string): string | null {
+  const cards = store.data.capabilities;
+  if (!cards) return null;
+  return cards.find((card) => card.title === title)?.id ?? null;
+}
+
+// ⚠️ 超时不能写死：原来固定 6 秒，导致「真跑一次 skill」（要 40~60 秒）永远被当成失败，
+// 页面还会误报"没跑通"；慢接口也会被当作"后端够不着"而退回演示数据。改成按调用给。
+async function request<T>(path: string, init?: RequestInit, timeoutMs = 20000): Promise<T | null> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    // 带上"我是谁"：后端按它取这个用户的数据。没登录（空）就不带，后端用默认用户。
+    const identity: Record<string, string> = activeUser ? { "X-Elfred-User": activeUser } : {};
+    const response = await fetch(`${PAGE2_API}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: init?.body instanceof FormData
+        ? { ...identity, ...init?.headers }
+        : { "content-type": "application/json", ...identity, ...init?.headers },
+      cache: "no-store",
+    });
+    clearTimeout(timer);
+    if (!response.ok) return null;
+    return (await response.json()) as T;
+  } catch {
+    return null;
+  }
+}
+
+function post<T>(path: string, body: unknown, timeoutMs = 20000) {
+  return request<T>(path, { method: "POST", body: JSON.stringify(body) }, timeoutMs);
+}
+
+/**
+ * 全部拉一遍。任何一个接口挂了都不影响别的，页面缺哪块就退回哪块的演示数据。
+ *
+ * `loadSeq`：换用户时会有两次拉取在飞（换人前那次 + 换人后那次）。只有**最新**那次
+ * 允许把结果写进 store —— 否则换人前那次晚回来，会把上一个人的数据盖在页面上（串号）。
+ */
+export async function loadPage2(force = false): Promise<Store> {
+  if (started && !force) return store;
+  started = true;
+  const seq = ++loadSeq;
+  const [capabilities, evidenceList, insight, alignment, memory, documents, pending, skills] = await Promise.all([
+    request<LiveCapability[]>("/capabilities"),
+    request<LiveEvidence[]>("/evidence"),
+    request<LiveInsight>("/insight/abilities"),
+    request<LiveAlignment>("/alignment"),
+    request<LiveMemory>("/memory"),
+    request<LiveDocument[]>("/documents"),
+    request<LivePending[]>("/materials/pending"),
+    request<LiveSkill[]>("/page2/skills"),
+  ]);
+
+  const reachable = Boolean(capabilities || insight || alignment || memory || evidenceList);
+  if (!reachable) {
+    console.warn(`[page2] 连不上后端（${PAGE2_API}），这一页先用演示数据顶着`);
+    if (seq === loadSeq) publish({ status: "offline", data: EMPTY_DATA, reason: "unreachable" });
+    return store;
+  }
+
+  const today = (evidenceList ?? []).filter((item) => item.day === "今天");
+  const details = await Promise.all(
+    (evidenceList ?? []).slice(0, 12).map((item) => request<LiveEvidenceDetail>(`/evidence/${item.id}`)),
+  );
+  const data: Page2Data = {
+    capabilities,
+    todayEvidence: evidenceList ? today : null,
+    evidence: evidenceList ? (details.filter(Boolean) as LiveEvidenceDetail[]) : null,
+    insight,
+    alignment,
+    memory,
+    documents,
+    pending,
+    skills,
+  };
+  if (seq === loadSeq) publish({ status: "ready", data, reason: "live" });
+  return store;
+}
+
+/** 裁定一条成果：后端会重算卡片分数与成果数，回来的卡直接盖上去 */
+export async function pushVerdict(evidenceId: string, verdict: "confirmed" | "disputed" | "forgotten") {
+  if (!isLive()) return;   // 后端不在，就按前端那套算
+  const result = await post<{ cards: LiveCapability[] }>(`/evidence/${evidenceId}/verdict`, { verdict });
+  if (result?.cards) publishCards(result.cards);
+  await loadPage2(true);
+}
+
+/** 选文件导入：原件进文档库，正文当场解析，先落「待确认」 */
+/** 建一张能力卡（这一页的「添加能力」和创建工具页都走这里） */
+export async function createCapability(input: {
+  title: string;
+  copyText?: string;
+  type?: string;
+  dimension?: string;
+  owner?: string;
+}) {
+  if (!isLive()) return null;
+  const result = await post<LiveCapability>("/capabilities", {
+    title: input.title,
+    copyText: input.copyText ?? "",
+    type: input.type ?? "Skill",
+    dimension: input.dimension ?? "洞察",
+    owner: input.owner ?? "探索",
+  });
+  if (result) await loadPage2(true);
+  return result;
+}
+
+export async function importFile(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  const result = await request<{ material: { title: string } }>("/materials/upload", { method: "POST", body: form });
+  if (result) await loadPage2(true);
+  return result;
+}
+
+/** 粘贴链接导入 */
+export async function importLink(url: string) {
+  const result = await post<{ title: string }>("/materials/link", { url });
+  if (result) await loadPage2(true);
+  return result;
+}
+
+/** Agent 把一件事干完了 → 写一条成果（任务那条线接上之前的触发点，也是演示用） */
+export async function runAgent(cardId: string, title?: string) {
+  if (!isLive()) return null;
+  const result = await post<{ evidenceId: string; card: LiveCapability }>("/agent/run", {
+    card_id: cardId,
+    title: title ?? "",
+    outcome: 86 + Math.round(Math.random() * 8),   // 每次跑出来的表现略有差别，别每次都一样
+    weight: 1.2,
+  });
+  if (result) await loadPage2(true);
+  return result;
+}
+
+/** 待确认 → 确认上架 / 丢弃 */
+export async function resolveMaterial(id: string, keep: boolean) {
+  const result = await post(`/materials/${id}/${keep ? "confirm" : "discard"}`, {});
+  if (result) await loadPage2(true);
+  return result;
+}
+
+/** 页面根上用一次：自动拉数据，数据回来时整棵树跟着重渲染 */
+export function usePage2Live() {
+  const state = useSyncExternalStore(
+    subscribePage2,
+    getPage2State,
+    () => INITIAL,
+  );
+  useEffect(() => {
+    void loadPage2();
+  }, []);
+  return state;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 第四页（我的/个人页）与记忆库的动作。
+// 之前这两块**前端一行后端都没接**（编辑资料、动态、勋章、记忆体检/合并/取代/归档/反思全是本地状态），
+// 后端接口是我们这边补的（见 `docs/前端闭环审查-20260924.md`）。这里把它们接上：
+// 拿不到就返回 null，页面照旧退回演示数据并显式降级——不许假装成功。
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type LiveProfile = {
+  available: boolean;
+  name: string;
+  bio: string;
+  tags: string[];
+  avatar: string;
+  background: string;
+  headline: string;
+  level: number | null;
+  daysTracked: number | null;
+  credibility: number | null;
+  identityDescribe: string;
+  filled: boolean;
+};
+
+export type LiveFeedItem = {
+  kind: "evidence" | "memory";
+  id: string;
+  title: string;
+  detail: string;
+  at: string;
+  /** 同一天同一条被合并了几次（后端合并的；> 1 时界面写"共 N 次"） */
+  count?: number;
+  verdict: string;
+};
+
+export type LiveBadge = { id: string; title: string; earned: boolean; progress: string };
+
+export type LiveRelationship = {
+  id: string;
+  name: string;
+  role: string;
+  stage: string;
+  photo: string;
+  chatId: string;
+};
+
+export type LiveHygieneItem = {
+  id: string;
+  text: string;
+  category?: string;
+  score?: number | null;
+  tags?: string[];
+  ageDays?: number | null;
+};
+
+export type LiveHygiene = {
+  available: boolean;
+  reason?: string;
+  total: number;
+  stale: LiveHygieneItem[];
+  lowConfidence: LiveHygieneItem[];
+  untagged: LiveHygieneItem[];
+  conflicts: LiveHygieneItem[];
+  note?: string;
+};
+
+/** 个人页资料（读） */
+export function fetchProfile() {
+  return request<LiveProfile>("/page2/profile");
+}
+
+/** 个人页资料（写）：存完把后端回的那份直接给调用方用，避免前端自己拼 */
+export function saveProfile(patch: Partial<Pick<LiveProfile, "name" | "bio" | "tags" | "avatar" | "background">>) {
+  return request<{ ok: boolean; saved: string[]; profile: LiveProfile }>("/page2/profile", {
+    method: "PATCH",
+    body: JSON.stringify(patch),
+  });
+}
+
+export function fetchFeed() {
+  return request<{ items: LiveFeedItem[]; count: number }>("/page2/feed");
+}
+
+export function fetchBadges() {
+  return request<{ badges: LiveBadge[]; count: number; topLevel: number; evidence: number }>("/page2/badges");
+}
+
+export function fetchRelationships() {
+  return request<{ available: boolean; relationships: LiveRelationship[]; count: number }>("/page2/relationships");
+}
+
+/** 记忆体检：长期未用 / 低置信 / 没标签 / 冲突（只读，不改任何东西） */
+export function fetchHygiene() {
+  return request<LiveHygiene>("/page2/memory/hygiene", undefined, 60000);
+}
+
+/** 合并两条记忆（转发 EMOS，动完能查历史、能回滚） */
+export async function mergeMemories(sourceMemoryId: string, targetMemoryId: string, reason = "") {
+  const result = await post<{ ok: boolean; reason?: string }>("/page2/memory/merge", {
+    sourceMemoryId, targetMemoryId, reason,
+  });
+  if (result?.ok) await loadPage2(true);
+  return result;
+}
+
+/** 新事实取代旧的 */
+export async function supersedeMemory(sourceMemoryId: string, replacementMemoryId: string, reason = "") {
+  const result = await post<{ ok: boolean; reason?: string }>("/page2/memory/supersede", {
+    sourceMemoryId, replacementMemoryId, reason,
+  });
+  if (result?.ok) await loadPage2(true);
+  return result;
+}
+
+/** 归档一条记忆（可 restore 回滚） */
+export async function archiveMemory(memoryId: string, reason = "记忆体检归档") {
+  const result = await post<{ ok: boolean; reason?: string }>(`/page2/memory/${memoryId}/archive`, { reason });
+  if (result?.ok) await loadPage2(true);
+  return result;
+}
+
+/** 召回 + Jev 重排：给一段意图，回一批按相关度排好的记忆 */
+export function recallMemories(q: string, rerank = true) {
+  return request<{
+    available: boolean; reason?: string; reranked: boolean;
+    memories: Array<Record<string, unknown>>; relevance?: Array<{ id: string; relevance: number | null }>;
+  }>(`/page2/memory/recall?q=${encodeURIComponent(q)}&rerank=${rerank ? "true" : "false"}`);
+}
+
+/** 周期反思：让 EMOS 归纳一段时间，模型润色成候选——**只产候选，不落库** */
+export function reflectMemories(kind: "day" | "week" = "week") {
+  return post<{
+    available: boolean; reason?: string; polished: boolean; model?: string;
+    raw: string; summary: string; candidates: string[]; memoryCount?: number | null;
+  }>("/page2/memory/reflect", { kind }, 120000);
+}
+
+/** 用户点头 → 反思结果才写进记忆 */
+export function acceptReflection(text: string, confirmed = true) {
+  return post<{ written: boolean; reason?: string }>("/page2/memory/reflect/accept", { text, confirmed });
+}
+
+/** 真跑一次 skill：真模型产出 → 自动落成果 → 卡片分数跟着变 */
+export async function runSkill(name: string, inputText: string) {
+  const result = await post<{ ran: boolean; reason?: string; runId?: string; evidenceId?: string; cardScore?: number }>(
+    `/page2/skills/${encodeURIComponent(name)}/run`, { inputText }, 180000,
+  );
+  if (result?.ran) await loadPage2(true);
+  return result;
+}
+
+/** 哪些 skill 该更新了（7 天 3 次 / 7 天未用）——只产候选 */
+export function fetchSkillTriggers() {
+  return request<{
+    candidates: Array<{ skill: string; title: string; kind: string; idleDays?: number | null; rule: Record<string, unknown> }>;
+    pending: Array<{ skill: string; title: string; kind: string }>;
+  }>("/page2/skill-triggers");
+}
+
+/** 版本历史 / 回退 / refine（产出候选版本，要用户点头才落盘） */
+export function fetchSkillVersions(name: string) {
+  return request<{ skill: string; current: number | null; versions: Array<Record<string, unknown>> }>(
+    `/page2/skills/${encodeURIComponent(name)}/versions`,
+  );
+}
+
+export async function rollbackSkill(name: string, version: number) {
+  const result = await post<{ ok: boolean; reason?: string }>(
+    `/page2/skills/${encodeURIComponent(name)}/rollback`, { version },
+  );
+  if (result?.ok) await loadPage2(true);
+  return result;
+}
+
+export async function refineSkill(name: string, trigger = "manual", confirmed = true) {
+  const result = await post<{ ok: boolean; reason?: string; version?: number; files?: string[] }>(
+    `/page2/skills/${encodeURIComponent(name)}/refine`, { trigger, confirmed }, 180000,
+  );
+  if (result?.ok) await loadPage2(true);
+  return result;
+}
+
+/** 用户指正一步：写 skill + 写记忆（记忆走 M6 闸门） */
+export async function pushFeedbackStep(input: {
+  skill: string; title: string; summary: string; steps: string[];
+  stepId: string; kind: string; note: string; runId: string;
+}) {
+  const result = await post<{ rules: unknown[]; memory: { written: boolean; reason?: string }; gate?: { mode: string } }>(
+    "/page2/feedback/step", input,
+  );
+  if (result) await loadPage2(true);
+  return result;
+}

@@ -138,11 +138,13 @@
   display: block;
   flex: none;
   border-radius: 50%;
-  background-color: #dfe3e6;
-  background-image: var(--v279-avatar-image, url("/profile-reference.png")) !important;
+  /* 没设置头像就是一格中性底，不再拿那张示例人像顶上；
+     设了头像就正常居中裁切（原来那组雪碧图偏移会把真头像裁歪） */
+  background-color: #e7ebf2;
+  background-image: var(--v279-avatar-image, none) !important;
   background-repeat: no-repeat;
-  background-position: -15px -215px;
-  background-size: 402px 873px;
+  background-position: center;
+  background-size: cover;
 }
 
 /* Profile share sheet. */
@@ -599,8 +601,12 @@
   position: relative;
   border: 1px solid var(--v279-line);
   border-radius: 20px;
-  background-image: var(--v279-cover-image, url("/profile-reference.png")) !important;
-  background-position: center 8%;
+  /* 没设封面就走留白渐变（和"我的"页那块底同款），不再露示例人像 */
+  background-image: var(
+    --v279-cover-image,
+    linear-gradient(160deg, #eef3fb 0%, #e6ecf7 55%, #dfe7f4 100%)
+  ) !important;
+  background-position: center;
   background-size: cover;
 }
 .v279-profile-cover > label {

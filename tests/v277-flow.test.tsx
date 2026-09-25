@@ -21,9 +21,9 @@ function readV28Source() {
     "app/v28/legacy/legacy-ui.tsx",
     "app/v28/features/home/home-page.tsx",
     "app/v28/features/home/evening-reflection-page.tsx",
-    "app/v28/features/knowledge/knowledge-page.tsx",
+    "app/v28/features/pages24/screens/knowledge-page.tsx",
     "app/v28/features/messages/messages-page.tsx",
-    "app/v28/features/profile/profile-page.tsx",
+    "app/v28/features/pages24/screens/profile-page.tsx",
   ]
     .map((path) => readFileSync(path, "utf8"))
     .join("\n");
@@ -179,8 +179,9 @@ test("V27.8 source contains the full usable path and the five reference-aligned 
     "欢迎使用 Elfred", "输入验证码", "让 Elfred 开始理解你", "个人信息",
     "你的 Agent 团队", "使用默认设置并继续", "Elfred 已准备好",
     "今天", "转为任务", "任务详情", "已暂停", "你的 Agent", "知识库", "记忆库",
-    "我的 Elfred", "编辑资料", "退出登录", "当前浏览器", "能力卡组",
-    "今天的新进展", "能力雷达", "关键关系", "消息分类", "Skill 与 Mini App",
+    "我的 Elfred", "编辑资料", "退出登录", "当前浏览器", "能力卡组", "待验证",
+    // 第二页以负责人 B 的实现为准：中间那块已改名「知识库」，不再出现"今天的新进展"。
+    "能力雷达", "关键关系", "消息分类", "Skill 与 Mini App",
     "讨论详情", "添加联系人", "Agent 朋友圈", "community-post",
   ]) assert.ok(source.includes(required), required);
   for (const removed of ["对齐率", "真实能力路径", "等级成长", "左右滑动浏览"]) assert.ok(!source.includes(removed), removed);
