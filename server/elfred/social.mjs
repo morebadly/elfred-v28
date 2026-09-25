@@ -5,6 +5,7 @@ import {attachmentRefs} from './attachments.mjs';
 import {sourceRefs} from './knowledge.mjs';
 import { taskCommand } from './runtime.mjs';
 import {checkedAssistResult} from './assist-result.mjs';
+import {groupAgentReady,requestGroupAgent,shouldProactivelyReply} from './group-agent.mjs';
 
 export function socialCommand(store,user,action,input) {
   const member=(space)=>{const object=store.read(user,space,'conversation');if(!store.role(space,user)) fail('FORBIDDEN','当前不是会话成员',403);return object;};
@@ -52,9 +53,37 @@ export function socialCommand(store,user,action,input) {
       if(!target||!store.visible(user,'friend').some(item=>item.data.status==='accepted'&&[item.owner,item.data.recipient].includes(target.id))) fail('FRIEND_REQUIRED','只能添加已接受关系的好友');
       return target.id;
     }))];
-    const conversation=store.add('conversation',user,{title:string(input.title,'群名',100),kind:'group',seq:0,status:'active'},{visibility:'members'});
+    if(input.agent===true&&input.confirm!==true)fail('CONFIRMATION_REQUIRED','创建带 Agent 的群聊前请确认群成员将看到 AI 身份与上下文授权');
+    const conversation=store.add('conversation',user,{title:string(input.title,'群名',100),kind:'group',seq:0,status:'active',agent_enabled:input.agent===true,agent_proactive:false,agent_consents:input.agent===true?{[user]:true}:{}},{visibility:'members'});
     store.join(conversation.id,user,'owner');users.forEach(target=>store.join(conversation.id,target));
     return {id:conversation.id};
+  }
+  if(action==='conversation.agent.start_group'){
+    if(input.confirm!==true)fail('CONFIRMATION_REQUIRED','请确认邀请对象、讨论目标和群 Agent 的公开身份');
+    const goal=string(input.goal,'群聊目标',1000);
+    const created=socialCommand(store,user,'conversation.create',{title:input.title,handles:input.handles,agent:true,confirm:true});
+    const conversation=store.get(created.id);
+    const invitation=store.add('message',user,{text:`我邀请大家一起讨论：${goal}`,attachments:[],seq:1,human_sender_id:user,sender_name:store.user(user).name,mentions:[],conversation_id:conversation.id},{space:conversation.id,visibility:'members'});
+    store.update(conversation,{...conversation.data,seq:1,last_message_id:invitation.id,agent_intro_trigger_id:invitation.id},user);
+    return {id:conversation.id};
+  }
+  if(action==='conversation.agent.configure'||action==='conversation.agent.consent'){
+    const conversation=store.expect(member(input.id),input.version);
+    if(conversation.data.kind!=='group')fail('INVALID_INPUT','群协作 Agent 仅用于多人群聊');
+    if(input.confirm!==true)fail('CONFIRMATION_REQUIRED','请确认群消息可按授权范围交给模型处理');
+    if(action==='conversation.agent.consent'){
+      const updated=store.update(conversation,{...conversation.data,agent_consents:{...conversation.data.agent_consents,[user]:input.allow===true}},user);
+      if(updated.data.agent_intro_trigger_id&&!updated.data.agent_intro_task_id&&groupAgentReady(store,updated)){
+        const trigger=store.get(updated.data.agent_intro_trigger_id);
+        const initiated=requestGroupAgent(store,updated.owner,updated,trigger);
+        store.update(store.get(updated.id),{...store.get(updated.id).data,agent_intro_task_id:initiated.task_id},user);
+        return {id:updated.id,...initiated};
+      }
+      return {id:updated.id};
+    }
+    if(conversation.owner!==user)fail('FORBIDDEN','只有群主可开启或设置群协作 Agent',403);
+    const enabled=input.enabled===true;
+    return {id:store.update(conversation,{...conversation.data,agent_enabled:enabled,agent_proactive:enabled&&input.proactive===true,agent_consents:enabled?{...conversation.data.agent_consents,[user]:true}:conversation.data.agent_consents||{}},user).id};
   }
   if (action==='conversation.remove_member') {
     const conversation=store.expect(member(input.id),input.version);
@@ -95,7 +124,7 @@ export function socialCommand(store,user,action,input) {
   }
   if (action==='message.send') {
     const conversation=member(input.id),attachments=attachmentRefs(store,user,input.attachment_ids||[],input.id),text=string(input.text,'消息',10000,attachments.length>0);
-    if(input.actor_type==='agent')fail('HUMAN_REQUIRED','消息只能由本人发送',403);
+    if(input.actor_type==='agent')fail('HUMAN_REQUIRED','真人消息不能伪装为 Agent；群协作 Agent 由受控任务发布',403);
     const sharedRecord=input.shared_record_id?store.read(user,input.shared_record_id,'shared_record'):null;
     if(sharedRecord&&(sharedRecord.space!==conversation.id||sharedRecord.data.status!=='active'))fail('INVALID_CONTEXT','只能分享当前会话的有效记录');
     const mentions=input.mentions||[];
@@ -104,7 +133,12 @@ export function socialCommand(store,user,action,input) {
     const message=store.add('message',user,{text,attachments,seq,human_sender_id:user,sender_name:store.user(user).name,mentions,conversation_id:conversation.id,...(sharedRecord?{shared_record_id:sharedRecord.id,record_version:sharedRecord.version,record_sources:sharedRecord.data.source_refs||[]}:{})},{space:conversation.id,visibility:'members'});
     store.update(conversation,{...conversation.data,seq,last_message_id:message.id},user);
     for (const target of new Set(mentions.filter(target=>target!==user))) store.unique('notification',`${message.id}:${target}`,()=>store.add('notification',target,{kind:'mention',target_id:message.id,status:'unread',summary:'有人在会话中提及你'}));
-    return {id:message.id};
+    let agent;
+    if(conversation.data.kind==='group'&&(input.agent_mention===true||shouldProactivelyReply(store,conversation,message))){
+      if(!groupAgentReady(store,conversation))fail('GROUP_AGENT_CONSENT','群 Agent 尚未获得全体当前成员授权');
+      agent=requestGroupAgent(store,user,store.get(conversation.id),message,{proactive:input.agent_mention!==true});
+    }
+    return {id:message.id,...(agent||{})};
   }
   if (action==='conversation.read') {
     const conversation=member(input.id);

@@ -20,6 +20,7 @@ import {
   type V277State,
 } from "../../v27-7-state";
 import { HomePage } from "../features/home/home-page";
+import { FeedDetailPage } from "../features/home/feed-detail-page";
 import { EveningReflectionPage } from "../features/home/evening-reflection-page";
 import { KnowledgePage } from "../features/knowledge/knowledge-page";
 import { MessagesPage } from "../features/messages/messages-page";
@@ -435,6 +436,8 @@ export function V277App() {
       );
     if (screen.name === "feed")
       return <FeedPage state={state} go={go} onBack={back} />;
+    if (screen.name === "feed-detail" && runtime)
+      return <FeedDetailPage id={screen.id} go={go} onBack={back} />;
     if (screen.name === "post") {
       const post = v277Posts.find((item) => item.id === screen.id);
       return post ? (

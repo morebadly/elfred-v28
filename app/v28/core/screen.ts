@@ -26,6 +26,7 @@ export type Screen =
   | {name:"create-tool";id?:string}
   | {name:"tool-detail";id:string}
   | { name: "post"; id: string }
+  | { name: "feed-detail"; id: string }
   | { name: "community-post"; id: string }
   | { name: "task"; id: string }
   | { name: "agent"; id: V277AgentId }

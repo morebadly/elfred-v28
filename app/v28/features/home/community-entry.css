@@ -25,3 +25,5 @@
 .community-kind-filters button{flex:0 0 auto;min-height:34px;padding:6px 13px;border:1px solid #e2e6e9;border-radius:18px;background:#fff;color:#77818b;font:inherit;font-size:12px;cursor:pointer}
 .community-kind-filters button[aria-pressed="true"]{background:#202528;border-color:#202528;color:#fff}
 .community-kind-filters button:focus-visible{outline:2px solid #8996a3;outline-offset:2px}
+.community-post-image-preview{display:block;width:calc(100% - 76px);max-width:330px;margin:8px 14px 10px 62px;padding:0;border:0;border-radius:12px;overflow:hidden;background:#f2f4f6;text-align:left}
+.community-post-image-preview img{display:block;width:100%;max-height:250px;object-fit:cover}

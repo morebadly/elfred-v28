@@ -2,6 +2,7 @@ import {fail,now} from './store.mjs';
 import {enumeration} from './policy.mjs';
 import {taskCommand} from './runtime.mjs';
 import {alignmentQuestions,alignmentSummary,choiceVersion,firstValueChoices} from '../../app/v28/core/onboarding-choice.mjs';
+import {provisionInitialDiscovery} from './auto-discovery.mjs';
 
 export function onboardingChoiceCommand(store,user,action,input){
  if(!action.startsWith('onboarding.choice.'))return null;
@@ -24,6 +25,7 @@ export function onboardingChoiceCommand(store,user,action,input){
  if(action==='onboarding.choice.confirm'){
   if(input.confirm!==true)fail('CONFIRMATION_REQUIRED','请核对初始理解卡');
   const summary=alignmentSummary(answers);
+  provisionInitialDiscovery(store,user,summary);
   return update({intent:summary.find(item=>item.question_id==='need'&&item.certainty==='selected')?.label||'轻量项目方向待确定',choice_summary:summary,choice_confirmed_at:now(),choice_phase:'handoff',initial_context:Object.fromEntries(['owner','explore','advise','create','connect','execute'].map(agent=>[agent,{scope:agent,purpose:'初始化选择形成的初始假设，需在真实使用中核对',items:summary.filter(item=>item.agent===agent),alignment:'insufficient'}])),initial_boundaries:{initiative:answers.initiative?.option||'unsure',external:answers.external?.option||'unsure',external_confirmation_required:true,source_access:'ask_when_needed',cross_agent:'minimum_necessary_with_confirmation'}});
  }
  if(action==='onboarding.choice.first'){

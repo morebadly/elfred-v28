@@ -68,8 +68,10 @@ export function tickObservations(store,provider,at=Date.now()){
     }
     if(success.includes(task.data.status)&&run.data.receipts?.some(r=>r.status==='succeeded')){
      const receipts=run.data.receipts.filter(r=>r.status==='succeeded'),urls=knownSources(receipts.flatMap(r=>r.citations||[])),added=urls.filter(url=>!watch.data.seen_sources.includes(url));
-     if(watch.data.baseline&&added.length){
-      const event=store.unique('feed','observation:'+task.id,()=>store.add('feed',user,{title:'关注的问题有新增来源',summary:`「${watch.data.goal.slice(0,150)}」检索到 ${added.length} 个此前未见的公开来源。需要你核对相关性和事实。`,system:'explore',topic:'持续关注',status:'active',purpose:'observation',event_key:task.id,task_id:task.id,source_refs:[{id:run.id}],citations:receipts.flatMap(r=>r.citations||[]).filter(c=>knownSources([c]).some(u=>added.includes(u))),reason:'来自本人授权的周期联网检查，仅按来源网址去重',personal_value:watch.data.goal,uncertainty:'新增来源不等于事实发生变化；同一网页正文变化尚不在此检查范围内',comments:[],attachments:[]}));
+     if((watch.data.baseline||watch.data.auto_suggested)&&added.length){
+      const initial=watch.data.auto_suggested&&!watch.data.baseline;
+      const sourceSummary=String(receipts.find(r=>typeof r.output==='string')?.output||'').trim().slice(0,900);
+      const event=store.unique('feed','observation:'+task.id,()=>store.add('feed',user,{title:initial?'探索 Agent 找到与你方向相关的公开线索':'关注的问题有新增来源',summary:initial?(sourceSummary||`根据初始化选择找到 ${added.length} 个公开来源，请打开核对。`):`「${watch.data.goal.slice(0,150)}」检索到 ${added.length} 个此前未见的公开来源。需要你核对相关性和事实。`,system:'explore',topic:initial?'初始化方向':'持续关注',status:'active',purpose:'observation',event_key:task.id,task_id:task.id,source_refs:[{id:run.id}],citations:receipts.flatMap(r=>r.citations||[]).filter(c=>knownSources([c]).some(u=>added.includes(u))),reason:initial?'来自本人初始化偏好和已确认的公开检索；仅有真实来源时发布':'来自本人授权的周期联网检查，仅按来源网址去重',personal_value:watch.data.goal,uncertainty:'搜索结果是待核对线索，不代表用户已选择方向或事实已验证',comments:[],attachments:[]}));
       store.unique('notification',event.id,()=>store.add('notification',user,{kind:'observation_change',target_id:task.id,status:'unread',summary:'持续关注发现新增公开来源'}));
      }
      watch=store.update(watch,{...watch.data,processed_task_id:task.id,baseline:true,seen_sources:[...new Set([...watch.data.seen_sources,...urls])],last_checked_at:now(),last_new_sources:added.length,last_error:null},user);
@@ -111,9 +113,9 @@ export async function tickRssObservations(store,reader=readRss,at=Date.now()){
    const watch=store.get(candidate.id);
    if(!watch||watch.data.status!=='active'||watch.version!==candidate.version||watch.data.expires<=Date.now())return;
    const seen=new Set(watch.data.seen_items||[]),fresh=items.filter(item=>!seen.has(item.id));
-   const matches=fresh.filter(item=>watch.data.keywords.some(word=>(item.title+' '+item.summary).toLocaleLowerCase().includes(word.toLocaleLowerCase()))).slice(0,5);
-   if(watch.data.baseline&&store.visible(watch.owner,'settings')[0]?.data.agents?.[watch.data.system]?.enabled!==false){
-    for(const item of [...matches].reverse())store.unique('feed',`${watch.owner}:rss:${hash(item.url)}`,()=>store.add('feed',watch.owner,{title:item.title,summary:item.summary||'查看原始来源并核对内容。',system:watch.data.system,topic:watch.data.goal.slice(0,100),status:'active',purpose:'discovery',event_key:`rss:${watch.id}:${hash(item.id)}`,task_id:null,source_subscription_id:watch.id,external_url:item.url,published_at:item.published_at,source_name:new URL(watch.data.source_url).hostname,source_refs:[],reason:'来自你授权的 RSS 来源，标题或摘要命中关注词',personal_value:watch.data.goal,uncertainty:'订阅标题和摘要仅是线索，事实与行动条件仍需核对原文',comments:[],attachments:[]}));
+   const matches=(watch.data.auto_suggested?fresh:fresh.filter(item=>watch.data.keywords.some(word=>(item.title+' '+item.summary).toLocaleLowerCase().includes(word.toLocaleLowerCase())))).slice(0,watch.data.auto_suggested&&!watch.data.baseline?3:5);
+   if((watch.data.baseline||watch.data.auto_suggested)&&store.visible(watch.owner,'settings')[0]?.data.agents?.[watch.data.system]?.enabled!==false){
+    for(const item of [...matches].reverse())store.unique('feed',`${watch.owner}:rss:${hash(item.url)}`,()=>store.add('feed',watch.owner,{title:item.title,summary:item.summary||'查看原始来源并核对内容。',system:watch.data.system,topic:watch.data.auto_suggested?'初始化方向':watch.data.goal.slice(0,100),status:'active',purpose:'discovery',event_key:`rss:${watch.id}:${hash(item.id)}`,task_id:null,source_subscription_id:watch.id,external_url:item.url,published_at:item.published_at,source_name:new URL(watch.data.source_url).hostname,source_refs:[],reason:watch.data.auto_suggested?'Agent 根据初始化偏好选择公开资讯查询，取得真实 RSS 条目；相关性仍需核对':'来自你授权的 RSS 来源，标题或摘要命中关注词',personal_value:watch.data.goal,uncertainty:'订阅标题和摘要仅是线索，事实与行动条件仍需核对原文',comments:[],attachments:[]}));
    }
    const checks=watch.data.checks+1;
    store.update(watch,{...watch.data,checks,baseline:true,seen_items:[...new Set([...fresh.map(item=>item.id),...seen])].slice(0,300),last_checked_at:now(),last_new_sources:watch.data.baseline?matches.length:0,next_at:at+watch.data.interval_hours*3600000,status:checks>=watch.data.max_checks?'completed':'active',last_error:null},watch.owner);

@@ -24,6 +24,7 @@ import {reflectionCommand} from './reflection.mjs';
 import {externalToolCommand} from './external-tools.mjs';
 import {feedCommand} from './feed.mjs';
 import {observationCommand} from './observation.mjs';
+import {provisionInitialDiscovery} from './auto-discovery.mjs';
 
 export const READ_TYPES=['observation','context_request','context_grant','handoff','project_stage','attachment','skill_version','tool_use','shared_record','project_slot','profile','settings','onboarding','task','run','attempt','approval','document','knowledge','memory','outcome','feed','interaction','inbox','notification','friend','conversation','message','draft','assist','commitment','project','post','comment','claim','copy','contribution','release','feedback','resource','connector','data_request','brief','skill','shortcut','trace','candidate','evaluation','method','rollout'];
 export class Service {
@@ -33,7 +34,8 @@ export class Service {
     s.transaction(()=>{
       s.unique('profile',user.id,()=>s.add('profile',user.id,{name:user.name,bio:'',public:false}));
       s.unique('settings',user.id,()=>s.add('settings',user.id,{timezone:'Asia/Shanghai',notifications:true,quiet:false,model_allowed:false}));
-      s.unique('onboarding',user.id,()=>s.add('onboarding',user.id,{status:'collecting',intent:'',skipped:[]}));
+      const onboarding=s.unique('onboarding',user.id,()=>s.add('onboarding',user.id,{status:'collecting',intent:'',skipped:[]}));
+      if(onboarding.data.choice_confirmed_at&&Array.isArray(onboarding.data.choice_summary))provisionInitialDiscovery(s,user.id,onboarding.data.choice_summary);
       s.db.prepare('INSERT OR IGNORE INTO budget_accounts(owner,limit_units) VALUES(?,?)').run(user.id,10000);
     });
   }
@@ -65,6 +67,8 @@ export class Service {
     return this.store.read(user,objectId);
   }
   bootstrap(user) {
+    const onboarding=this.store.visible(user,'onboarding')[0];
+    if(onboarding?.data.choice_confirmed_at&&Array.isArray(onboarding.data.choice_summary)&&!this.store.visible(user,'observation').some(item=>item.data.auto_suggested))this.store.transaction(()=>provisionInitialDiscovery(this.store,user,onboarding.data.choice_summary));
     const types=['observation','context_request','context_grant','handoff','project_stage','attachment','skill_version','tool_use','shared_record','project_slot','profile','settings','onboarding','task','run','knowledge','document','memory','feed','notification','friend','conversation','message','post','comment','project','draft','assist','commitment','copy','contribution','release','feedback','claim','interaction','approval','resource','connector','brief','skill','shortcut','inbox','candidate','evaluation','outcome','method','rollout','trace'];
     const module_errors={},objects=Object.fromEntries(types.map(type=>{try{return [type,this.list(user,type)];}catch(error){if(['profile','settings','onboarding'].includes(type))throw error;module_errors[type]='此模块暂时加载失败，请重试';return [type,[]];}}));
     return {user:this.store.user(user),provider:this.provider.status(),systems:SYSTEMS,definitions:DEFINITIONS,objects,module_errors,budget:this.store.db.prepare('SELECT * FROM budget_accounts WHERE owner=?').get(user),usage:this.store.db.prepare('SELECT * FROM usage WHERE owner=? ORDER BY created DESC LIMIT 100').all(user),server_time:now(),storage:'local-sqlite',production_ready:false};

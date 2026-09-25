@@ -8,6 +8,7 @@
   "scripts": {
     "dev:local": "node --env-file-if-exists=.env.local scripts/start-local.mjs",
     "test:runtime": "node --test tests/elfred/*.test.mjs",
+    "seed:fixtures": "node scripts/seed-feed-fixtures.mjs",
     "build:local": "next build",
     "start:local": "node --env-file-if-exists=.env.local scripts/start-local.mjs --production",
     "dev": "node scripts/run-project.mjs dev",

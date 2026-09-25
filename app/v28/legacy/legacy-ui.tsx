@@ -12,6 +12,7 @@ import {BuiltinCapabilities,TaskCapability} from '../features/home/builtin-capab
 import {objectScreen} from '../core/object-screen';
 import {CommunityWorkCard} from '../features/home/community-works';
 import {GroupRecords} from '../features/messages/group-records';
+import {GroupAgentPanel} from '../features/messages/group-agent';
 import {OriginLinks,CalendarDraft,ConversationHandoffs,SharedRecordCard} from '../features/messages/result-handoffs';
 import {AttachmentPicker,AttachmentList,type FileRef} from '../features/live/attachments';
 import {CommunityEntry} from '../features/home/community-entry';
@@ -3196,7 +3197,7 @@ export function FeedPage({
   onBack: () => void;
 }) {
   const runtime=useRuntime();
-  const moments:AgentMoment[]=runtime?(runtime.snapshot?.objects.feed||[]).filter(item=>!state.hiddenPostIds.includes(item.id)).map(item=>({id:item.id,agent:(item.data.system==='advise'?'advisor':item.data.system) as V277AgentId,variant:'brief',type:'观点动态',period:new Date(item.created).toDateString()===new Date().toDateString()?'今天':'本月',time:new Date(item.created).toLocaleDateString('zh-CN'),title:entityText(item,'title'),summary:entityText(item,'summary'),target:{name:'task',id:entityText(item,'task_id')}})):agentMoments;
+  const moments:AgentMoment[]=runtime?(runtime.snapshot?.objects.feed||[]).filter(item=>!state.hiddenPostIds.includes(item.id)).map(item=>({id:item.id,agent:(item.data.system==='advise'?'advisor':item.data.system) as V277AgentId,variant:'brief',type:'观点动态',period:new Date(item.created).toDateString()===new Date().toDateString()?'今天':'本月',time:new Date(item.created).toLocaleDateString('zh-CN'),title:entityText(item,'title'),summary:entityText(item,'summary'),target:{name:'feed-detail',id:item.id}})):agentMoments;
   const [agentFilter, setAgentFilter] = useState<"all" | V277AgentId>("all");
   const [period, setPeriod] = useState("全部时间");
   const [postType, setPostType] = useState("全部类型");
@@ -4738,7 +4739,7 @@ export function AgentMomentsPage({
                   held.current = false;
                   return;
                 }
-                go(runtime?{name:'task',id:entityText(feeds.find(item=>item.id===post.id),'task_id')}:{ name: "agent-moment-detail", id, postId: post.id });
+                go(runtime?{name:'feed-detail',id:post.id}:{ name: "agent-moment-detail", id, postId: post.id });
               }}
             >
               <h3>{post.title}</h3>
@@ -5780,8 +5781,8 @@ export function ChatPage({
 }) {
   const runtime=useRuntime();
   const conversation=runtime?.snapshot?.objects.conversation.find(item=>item.id===id);
-  const unreadEntry=useRef<{id:string;after:number}|null>(null);
-  if(conversation&&unreadEntry.current?.id!==id)unreadEntry.current={id,after:Number(conversation.data.seq)-(conversation.unread||0)};
+  const [unreadEntry,setUnreadEntry]=useState<{id:string;after:number}|null>(null);
+  useEffect(()=>{if(conversation)setUnreadEntry(current=>current?.id===id?current:{id,after:Number(conversation.data.seq)-(conversation.unread||0)})},[conversation,id]);
   const [attachments,setAttachments]=useState<FileRef[]>([]),[mediaBusy,setMediaBusy]=useState(false),[messageLimit,setMessageLimit]=useState(50);
   useEffect(()=>{setMessageLimit(50)},[id]);
   const [assistOpen,setAssistOpen]=useState(false),[chatQuery,setChatQuery]=useState(''),[sending,setSending]=useState(false);
@@ -5790,8 +5791,11 @@ export function ChatPage({
   const [mention,setMention]=useState<{prefix:string;query:string}|null>(null);
   const [mentionBusy,setMentionBusy]=useState(false);
   const isGroup=conversation?.data.kind==='group';
+  const groupAgentReady=Boolean(isGroup&&conversation?.data.agent_enabled&&conversation?.members?.every(member=>(conversation.data.agent_consents as Record<string,boolean>|undefined)?.[member.id]));
+  const latestGroupAgentTask=isGroup?runtime?.snapshot?.objects.task.filter(task=>(task.data.group_agent as {conversation_id?:string}|undefined)?.conversation_id===id).sort((a,b)=>b.created.localeCompare(a.created))[0]:undefined;
   const groupMembers=(conversation?.members||[]).filter(member=>member.id!==runtime?.snapshot?.user.id&&(!mention?.query||(member.name+' '+member.handle).toLowerCase().includes(mention.query.toLowerCase())));
   const chooseMember=(member:{id:string;name:string;handle:string})=>{if(!mention)return;setText(mention.prefix+'@'+member.name+'（'+member.handle+'） ');setMention(null);composerInput.current?.focus()};
+  const chooseGroupAgent=()=>{if(!mention)return;setText(mention.prefix+'@Elfred ');setMention(null);composerInput.current?.focus()};
   const [composerHeight,setComposerHeight]=useState(64);
   const mentionGeneration=useRef(0);
   useEffect(()=>{mentionGeneration.current++;return()=>{mentionGeneration.current++}},[id]);
@@ -5799,7 +5803,7 @@ export function ChatPage({
   useEffect(()=>{if(!mentionBusy&&!mention)composerInput.current?.focus()},[agentMode,mentionBusy,Boolean(mention)]);
   const [searchHits,setSearchHits]=useState<{id:string;type:string;title:string;excerpt:string}[]|null>(null);
   const lastHumanMessage=runtime?.snapshot?.objects.message.filter(item=>item.space===id).sort((a,b)=>Number(b.data.seq)-Number(a.data.seq))[0];
-  const cold=conversation?.data.kind==='direct'&&(!lastHumanMessage||Date.now()-Date.parse(lastHumanMessage.created)>=7*86400000);
+  const cold=conversation?.data.kind==='direct'&&(!lastHumanMessage||Date.parse(runtime?.snapshot?.server_time||lastHumanMessage.created)-Date.parse(lastHumanMessage.created)>=7*86400000);
   const agentDraftKey=runtime?.snapshot?`elfred-personal-draft:${runtime.snapshot.user.id}:${id}`:'';
   useEffect(()=>{setAgentMode(false);setMention(null);setMentionBusy(false);setIceDismissed(false);setSearchHits(null);try{setAgentInput(sessionStorage.getItem(agentDraftKey)||'')}catch{setAgentInput('')}},[agentDraftKey]);
   const updateAgentInput=(value:string)=>{setAgentInput(value);try{sessionStorage.setItem(agentDraftKey,value)}catch{}};
@@ -5887,7 +5891,7 @@ export function ChatPage({
     (runtime?[]:defaultMessages);
   const send = (event?: FormEvent) => {
     event?.preventDefault();
-    if(mention){if(isGroup){if(groupMembers[0])chooseMember(groupMembers[0])}else openMentionPersonal();return;}
+    if(mention){if(isGroup){if(groupAgentReady&&/^elfred$/i.test(mention.query.trim()))chooseGroupAgent();else if(mention.query.trim()&&groupMembers.length===1)chooseMember(groupMembers[0])}else openMentionPersonal();return;}
     const input = (agentMode?agentInput:text).trim();
     if ((!input&&!attachments.length)||sending||mediaBusy) return;
     if(runtime&&conversation&&agentMode){
@@ -5895,7 +5899,7 @@ export function ChatPage({
       const keyword=/^(?:搜索|检索|查找)[：:\s]*(.+)$/.exec(input)?.[1]?.trim();
       void (async()=>{try{if(keyword){const result=await runtime.request<{hits:{id:string;type:string;title:string;excerpt:string}[]}>('/search',{query:keyword});setSearchHits(result.hits);updateAgentInput('')}else if(await agentPanel.current?.submit(input))updateAgentInput('')}catch(error){runtime.report(error instanceof Error?error.message:'请求失败')}finally{setSending(false)}})();return;
     }
-    if(runtime){setSending(true);void flushDraft().then(()=>conversation?runtime.command('message.send',{id,text:input,attachment_ids:attachments.map(file=>file.id),mentions:isGroup?(conversation.members||[]).filter(member=>input.includes('@'+member.name+'（'+member.handle+'）')).map(member=>member.id):[]}):runtime.command('task.create',{goal:input,mode:/^(搜索|检索|查找)/.test(input)?'search':'compose',system:agent?.id==='advisor'?'advise':agent?.id||'execute'})).then(async result=>{setText('');setAttachments([]);if(conversation)await flushDraft();else go({name:'task',id:result.id})}).catch(()=>{}).finally(()=>setSending(false));return;}
+    if(runtime){setSending(true);void flushDraft().then(()=>conversation?runtime.command('message.send',{id,text:input,attachment_ids:attachments.map(file=>file.id),mentions:isGroup?(conversation.members||[]).filter(member=>input.includes('@'+member.name+'（'+member.handle+'）')).map(member=>member.id):[],agent_mention:Boolean(isGroup&&/(?:^|\s)@Elfred(?:\s|$)/i.test(input))}):runtime.command('task.create',{goal:input,mode:/^(搜索|检索|查找)/.test(input)?'search':'compose',system:agent?.id==='advisor'?'advise':agent?.id||'execute'})).then(async result=>{setText('');setAttachments([]);if(conversation)await flushDraft();else go({name:'task',id:result.id})}).catch(()=>{}).finally(()=>setSending(false));return;}
     const userMessage: V277Message = {
       id: makeId("message"),
       role: "user",
@@ -5989,19 +5993,17 @@ export function ChatPage({
             </IconButton>
           </span>
         </header>
-        {runtime&&isGroup&&!agentMode&&<button className="v277-secondary" style={{margin:'4px 20px'}} onClick={()=>void flushDraft().then(()=>setAgentMode('personal')).catch(()=>{})}>帮我理解与准备表达 · 仅自己可见</button>}
+        {runtime&&isGroup&&!agentMode&&<><button className="v277-secondary" style={{margin:'4px 20px'}} onClick={()=>void flushDraft().then(()=>setAgentMode('personal')).catch(()=>{})}>帮我理解与准备表达 · 仅自己可见</button>{conversation?.data.agent_enabled&&<small style={{margin:'0 20px',display:'block'}}>Elfred 在群内以 AI 身份参与{groupAgentReady?' · 输入 @Elfred 可提问':' · 等待成员授权'}</small>}{latestGroupAgentTask&&['queued','running','blocked','failed','reconciliation_required'].includes(String(latestGroupAgentTask.data.status))&&<button type="button" className="v277-secondary" style={{margin:'4px 20px'}} onClick={()=>go({name:'task',id:latestGroupAgentTask.id})} role="status">Elfred 回复：{runtimeStatuses[String(latestGroupAgentTask.data.status)]||String(latestGroupAgentTask.data.status)} · 查看详情</button>}</>}
         <section className="v277-chat-stream v279-human-chat-stream">
           <time>{runtime?new Date().toLocaleDateString("zh-CN"):"今天 14:20"}</time>
           {runtime&&messages.length>messageLimit&&!chatQuery&&!messageId&&<button type="button" className="v277-secondary" onClick={()=>setMessageLimit(value=>value+50)}>加载更早的消息</button>}
           {messages.filter(message=>!chatQuery||message.text.includes(chatQuery)).slice(chatQuery||messageId?0:-messageLimit).map((message, index) => (
             <Fragment key={message.id}>
               <div id={"message-"+message.id} className={`v277-message ${message.role}`} style={message.id===messageId?{outline:"2px solid #7894a4",borderRadius:12}:undefined}>
-                {message.role === "assistant" && (
-                  <i className="avatar-lin v277-sprite-community" />
-                )}
+                {message.role === "assistant" && (runtime?.snapshot?.objects.message.find(item=>item.id===message.id)?.data.actor_type==='agent'?<span className="elfred-group-agent-avatar" aria-label="AI Agent"><Bot size={19}/></span>:<i className="avatar-lin v277-sprite-community" />)}
                 <div>
                   {runtime&&<small>{entityText(runtime.snapshot?.objects.message.find(item=>item.id===message.id),'sender_name')} · {message.time}</small>}
-                  <p>{message.text}</p>{runtime&&<SharedRecordCard message={runtime.snapshot?.objects.message.find(item=>item.id===message.id)} go={go}/>}{runtime&&<AttachmentList items={(runtime.snapshot?.objects.message.find(item=>item.id===message.id)?.data.attachments||[]) as FileRef[]}/>}
+                  <p>{message.text}</p>{runtime&&runtime.snapshot?.objects.message.find(item=>item.id===message.id)?.data.actor_type==='agent'&&<><small>AI 协作建议 · 日程、介绍和承诺待相关成员确认</small><details><summary>查看引用的群消息</summary>{((runtime.snapshot?.objects.message.find(item=>item.id===message.id)?.data.source_refs||[]) as {id:string}[]).map(ref=>{const source=runtime.snapshot?.objects.message.find(item=>item.id===ref.id);return <button type="button" key={ref.id} className="v277-secondary" onClick={()=>document.getElementById('message-'+ref.id)?.scrollIntoView({block:'center'})}>{source?`${entityText(source,'sender_name')}：${entityText(source,'text').slice(0,60)}`:'来源已不可访问'}</button>})}</details></>}{runtime&&<SharedRecordCard message={runtime.snapshot?.objects.message.find(item=>item.id===message.id)} go={go}/>}{runtime&&<AttachmentList items={(runtime.snapshot?.objects.message.find(item=>item.id===message.id)?.data.attachments||[]) as FileRef[]}/>}
                 </div>
               </div>
               {id === "person-linjia" && index === 3 && (
@@ -6031,10 +6033,10 @@ export function ChatPage({
             </Fragment>
           ))}
           {runtime&&conversation&&cold&&!iceDismissed&&!agentMode&&!mention&&<div className="elfred-icebreaker"><span>想重新聊起来？Elfred 可以帮你找个开场。</span><button type="button" onClick={()=>{void flushDraft().then(()=>setAgentMode('icebreaker')).catch(()=>{})}}>准备开场</button><button type="button" aria-label="关闭破冰提示" onClick={()=>setIceDismissed(true)}>×</button></div>}
-          {runtime&&conversation&&agentMode&&<div ref={agentAnchor}><PersonalAgentPanel ref={agentPanel} conversation={conversation} unreadAfter={unreadEntry.current?.after} entry={agentMode} onClose={()=>{if(!sending){setAgentMode(false);setSearchHits(null)}}} onFill={async(value,version)=>{setSending(true);try{await runtime.command('draft.save',{conversation_id:id,text:value,version});await reloadDraft(value)}finally{setSending(false)}}} go={go}/></div>}
+          {runtime&&conversation&&agentMode&&<div ref={agentAnchor}><PersonalAgentPanel ref={agentPanel} conversation={conversation} unreadAfter={unreadEntry?.after} entry={agentMode} onClose={()=>{if(!sending){setAgentMode(false);setSearchHits(null)}}} onFill={async(value,version)=>{setSending(true);try{await runtime.command('draft.save',{conversation_id:id,text:value,version});await reloadDraft(value)}finally{setSending(false)}}} go={go}/></div>}
           {agentMode&&searchHits&&<section className="elfred-search-results" aria-label="个人智能体搜索结果"><b>搜索结果 · {searchHits.length} 条</b>{!searchHits.length&&<p>未找到匹配资料，试试更具体的关键词。</p>}{searchHits.map(hit=><button type="button" key={hit.id} onClick={()=>{void runtime!.request<import('../features/live/types').Entity>('/objects/'+hit.id).then(item=>go(objectScreen(item))).catch(error=>runtime!.report(error.message))}}><b>{hit.title}</b><p>{hit.excerpt}</p><small>{hit.type} · 查看来源</small></button>)}</section>}
         </section>
-        {runtime&&conversation&&mention&&!agentMode&&isGroup&&<section id="elfred-mention-picker" className="elfred-mention-picker" aria-label="选择群成员"><p className="elfred-mention-title">提及群成员 · 发送后才通知</p><div className="elfred-mention-results">{groupMembers.map(member=><button className="elfred-mention-personal" type="button" key={member.id} onClick={()=>chooseMember(member)}><span><strong>{member.name}</strong><small>@{member.handle}</small></span></button>)}{!groupMembers.length&&<p>没有匹配的当前群成员</p>}</div><button type="button" onClick={closeMention}>取消</button></section>}
+        {runtime&&conversation&&mention&&!agentMode&&isGroup&&<section id="elfred-mention-picker" className="elfred-mention-picker" aria-label="选择群成员"><p className="elfred-mention-title">提及群成员或群协作 Agent</p><div className="elfred-mention-results">{groupAgentReady&&'Elfred'.toLowerCase().includes(mention.query.toLowerCase())&&<button className="elfred-mention-personal" type="button" onClick={chooseGroupAgent}><span><strong>Elfred · 群协作 Agent</strong><small>AI 身份公开回复 · 使用群内授权上下文</small></span></button>}{groupMembers.map(member=><button className="elfred-mention-personal" type="button" key={member.id} onClick={()=>chooseMember(member)}><span><strong>{member.name}</strong><small>@{member.handle}</small></span></button>)}{!groupMembers.length&&!groupAgentReady&&<p>没有匹配的当前群成员</p>}</div><button type="button" onClick={closeMention}>取消</button></section>}
         {runtime&&conversation&&mention&&!agentMode&&!isGroup&&<MentionPicker query={mention.query} busy={mentionBusy} onPersonal={openMentionPersonal} onDismiss={closeMention} onResource={item=>{if(mentionBusy)return;setMentionBusy(true);const generation=mentionGeneration.current;void flushDraft().then(()=>{if(generation!==mentionGeneration.current)return;setMention(null);go(objectScreen(item))}).catch(()=>{}).finally(()=>{if(generation===mentionGeneration.current)setMentionBusy(false)})}}/>}
         {mention&&!mention.prefix&&!mention.query&&<span className="elfred-mention-input-hint" aria-hidden="true">继续输入…</span>}
         <form className={`v279-human-composer ${runtime?'elfred-connected-composer':''} ${agentMode?'elfred-agent-mode':''} ${mention?'elfred-mention-composer':''}`} onSubmit={send}>
@@ -6059,7 +6061,7 @@ export function ChatPage({
             <ArrowUp size={21} />
           </button>
         </form>
-        {runtime&&conversation&&assistOpen&&<RootPortal><button className="v278-sheet-backdrop" aria-label="关闭辅助" onClick={()=>setAssistOpen(false)}/><section className="v278-half-sheet" role="dialog" aria-modal="true" style={{overflowY:'auto',maxHeight:'80%'}}><button className="v277-secondary" onClick={()=>setAssistOpen(false)}>关闭</button><AttachmentPicker value={attachments} onChange={setAttachments} conversationId={id} go={go} onBusy={setMediaBusy}/><ConversationMembers conversation={conversation} onLeave={onBack}/><GroupRecords conversation={conversation}/><ConversationHandoffs conversation={conversation} go={go}/></section></RootPortal>}
+        {runtime&&conversation&&assistOpen&&<RootPortal><button className="v278-sheet-backdrop" aria-label="关闭辅助" onClick={()=>setAssistOpen(false)}/><section className="v278-half-sheet" role="dialog" aria-modal="true" style={{overflowY:'auto',maxHeight:'80%'}}><button className="v277-secondary" onClick={()=>setAssistOpen(false)}>关闭</button><GroupAgentPanel conversation={conversation}/><AttachmentPicker value={attachments} onChange={setAttachments} conversationId={id} go={go} onBusy={setMediaBusy}/><ConversationMembers conversation={conversation} onLeave={onBack}/><GroupRecords conversation={conversation}/><ConversationHandoffs conversation={conversation} go={go}/></section></RootPortal>}
         {searchOpen && (
           <RootPortal>
             <button
@@ -6249,8 +6251,9 @@ export function CommunityPage({
   const [comment, setComment] = useState("");
   const [communityKind,setCommunityKind]=useState('all');
   const followed=(author:string)=>Boolean(runtime?.snapshot?.objects.interaction.some(i=>i.data.kind==='follow_author'&&i.data.object_id===author&&i.data.active));
-  const visibleWorks=runtime?.snapshot?.objects.release.filter(r=>r.data.is_current&&(communityKind!=='following'||followed(r.owner))&&!runtime.snapshot?.objects.interaction.some(i=>i.data.object_id===r.id&&i.data.kind==='hide'&&i.data.active))||[];
-  const visiblePosts:SocialPost[]=runtime?(runtime.snapshot?.objects.post||[]).filter(item=>!state.hiddenPostIds.includes(item.id)&&(communityKind!=='following'||followed(item.owner))&&(['all','following'].includes(communityKind)||(communityKind==='project'?Boolean(item.data.project_id):communityKind==='post'?!item.data.project_id:false))).map(item=>({id:item.id,name:entityText(item,'author_name')||entityText(item,'title'),date:new Date(item.created).toLocaleDateString('zh-CN'),text:entityText(item,'content'),likes:Number(item.data.likes||0),comments:Number(item.data.comments||0),avatar:'lin'})):communityPosts;
+  const visibleWorks=runtime?.snapshot?.objects.release.filter(r=>r.visibility==='public'&&r.data.author_type==='human'&&r.data.status==='published'&&r.data.is_current&&(communityKind!=='following'||followed(r.owner))&&!runtime.snapshot?.objects.interaction.some(i=>i.data.object_id===r.id&&i.data.kind==='hide'&&i.data.active))||[];
+  const shownWorks=runtime&&['all','work','following'].includes(communityKind)?visibleWorks:[];
+  const visiblePosts:SocialPost[]=runtime?(runtime.snapshot?.objects.post||[]).filter(item=>item.visibility==='public'&&item.data.author_type==='human'&&['published','recruiting','closed'].includes(String(item.data.status))&&!state.hiddenPostIds.includes(item.id)&&(communityKind!=='following'||followed(item.owner))&&(['all','following'].includes(communityKind)||(communityKind==='project'?Boolean(item.data.project_id):communityKind==='post'?!item.data.project_id:false))).map(item=>({id:item.id,name:entityText(item,'author_name')||entityText(item,'title'),date:new Date(item.created).toLocaleDateString('zh-CN'),text:entityText(item,'content'),likes:Number(item.data.likes||0),comments:Number(item.data.comments||0),avatar:'lin'})):communityPosts;
   const toggleSaved = (id: string) => {
     if(runtime){void runtime.command('post.interact',{id,kind:'save'}).catch(()=>{});return;}
     const saved = state.savedPostIds.includes(id);
@@ -6314,7 +6317,7 @@ export function CommunityPage({
       </>}
       {runtime&&<nav aria-label="社区内容分类" className="community-kind-filters">{[['all','全部'],['post','动态'],['work','作品'],['project','共创'],['following','关注']].map(([v,n])=><button key={v} aria-pressed={communityKind===v} onClick={()=>setCommunityKind(v)}>{n}</button>)}</nav>}
       <section className="v277-social-feed">
-        {[...visiblePosts,...(runtime&&['all','work','following'].includes(communityKind)?visibleWorks.map(r=>({id:r.id,name:entityText(r,'author_name'),date:new Date(r.created).toLocaleDateString('zh-CN'),text:entityText(r,'content'),likes:0,comments:0,avatar:'lin'} as SocialPost)):[])].sort((a,b)=>{if(!runtime)return 0;const all=[...runtime.snapshot!.objects.post,...visibleWorks];return (all.find(x=>x.id===b.id)?.created||'').localeCompare(all.find(x=>x.id===a.id)?.created||'')}).map((post) => {
+        {[...visiblePosts,...shownWorks.map(r=>({id:r.id,name:entityText(r,'author_name'),date:new Date(r.created).toLocaleDateString('zh-CN'),text:entityText(r,'content'),likes:0,comments:0,avatar:'lin'} as SocialPost))].sort((a,b)=>{if(!runtime)return 0;const all=[...runtime.snapshot!.objects.post,...shownWorks];return (all.find(x=>x.id===b.id)?.created||'').localeCompare(all.find(x=>x.id===a.id)?.created||'')}).map((post) => {
           const work=visibleWorks.find(r=>r.id===post.id);if(work)return <CommunityWorkCard key={work.id} release={work} go={go}/>;
           const originalPost=runtime?.snapshot?.objects.post.find(p=>p.id===post.id);
           const isLiked = runtime?runtime.snapshot?.objects.interaction.some(item=>item.data.object_id===post.id&&item.data.kind==='like'&&item.data.active):liked.includes(post.id);
@@ -6334,9 +6337,11 @@ export function CommunityPage({
                 onClick={() => go({ name: "community-post", id: post.id })}
               >
                 {runtime?.snapshot?.objects.post.find(item=>item.id===post.id)?.data.project_id?<span className="community-cocreation-label">共创帖</span>:null}
+                {originalPost&&<h3>{entityText(originalPost,'title')}</h3>}
                 <p>{post.text}</p>
               </button>
               {originalPost&&<><RecruitmentSummary post={originalPost}/><FollowAuthor post={originalPost}/></>}
+              {originalPost&&((originalPost.data.attachments||[]) as FileRef[]).some(file=>file.mime.startsWith('image/'))&&<button type="button" className="community-post-image-preview" onClick={()=>go({name:'community-post',id:post.id})} aria-label="查看动态图片"><img src={`/api/elfred/attachments/${((originalPost.data.attachments||[]) as FileRef[]).find(file=>file.mime.startsWith('image/'))?.id}`} alt="动态配图" loading="lazy"/></button>}
               {post.gallery && (
                 <button
                   type="button"
@@ -6421,14 +6426,14 @@ export function CommunityPage({
             </article>
           );
         })}
-      </section>
-      {!visiblePosts.length && (
+        {!visiblePosts.length&&!shownWorks.length && (
         <div className="v277-empty">
-          <Search size={22} />
-          <b>没有匹配内容</b>
-          <p>换一个关键词再试试。</p>
+          <b>{communityKind==='all'?'社区还没有真人发布的内容':'这个分类暂时没有内容'}</b>
+          <p>可以分享动态、作品，或发起一个共创项目。</p>
+          <button type="button" onClick={()=>go({name:'community-post',id:'new'})}>发布第一条内容</button>
         </div>
-      )}
+        )}
+      </section>
       <TaskPlayer state={state} go={go} collapsed={playerCollapsed} />
       {searchOpen && (
         <CommunitySearchSheet go={go} onClose={() => setSearchOpen(false)} />

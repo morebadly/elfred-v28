@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect,useState } from "react";
 import { MoreHorizontal, SlidersHorizontal } from "lucide-react";
 import { agentList } from "../../../v27-7-data";
 import type { V277AgentId } from "../../../v27-7-state";
-import { useRuntime } from "../../core/runtime-context";
+import { useRuntime,entityRef } from "../../core/runtime-context";
 import { localDay } from "../../core/local-day.mjs";
 import { Action } from "../../core/runtime-panels";
 import type { Screen } from "../../core/screen";
@@ -45,16 +45,18 @@ export function PrivateFeed({ go, onDrag }: { go: (screen: Screen) => void; onDr
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [detailsId, setDetailsId] = useState<string | null>(null);
+  const [pageSize,setPageSize]=useState(30);
   const [mergeInto, setMergeInto] = useState("");
   const canonicalTopic = (value: string) => topicSettings[value]?.alias || value;
   const topicOptions = [...new Set(snapshot.objects.feed.map(item => canonicalTopic(text(item, "topic"))).filter(Boolean))].filter(value => !topicSettings[value]?.removed);
   const managedTopic = topic || topicOptions[0] || "";
+  const initialDiscovery=snapshot.objects.observation?.find(item=>item.data.auto_suggested===true);
 
   const active = (id: string, kind: string) => snapshot.objects.interaction.some(item =>
     item.data.object_id === id && item.data.kind === kind && item.data.active,
   );
   const score = (item: Entity) => {
-    const age = (Date.now() - Date.parse(item.created)) / 86400000;
+    const age = (Date.parse(snapshot.server_time) - Date.parse(item.created)) / 86400000;
     const task = snapshot.objects.task.find(candidate => candidate.id === item.data.task_id);
     const affinity = snapshot.objects.feed.filter(candidate =>
       canonicalTopic(text(candidate,"topic")) === canonicalTopic(text(item,"topic")) && active(candidate.id, "like"),
@@ -75,6 +77,7 @@ export function PrivateFeed({ go, onDrag }: { go: (screen: Screen) => void; onDr
   ).sort((a, b) => order === "latest"
     ? b.created.localeCompare(a.created)
     : score(b) - score(a) || b.created.localeCompare(a.created));
+  useEffect(()=>setPageSize(30),[order,system,topic,showHidden]);
 
   return <section className={styles.feed} aria-label="Agent 朋友圈">
     <header className={styles.sectionHeader}>
@@ -100,9 +103,11 @@ export function PrivateFeed({ go, onDrag }: { go: (screen: Screen) => void; onDr
       <details className={styles.topicManager}><summary>管理话题</summary>{managedTopic&&<><p>{managedTopic} · {topicSettings[managedTopic]?.mode==='follow'?'已关注':topicSettings[managedTopic]?.mode==='mute'?'已静音':'普通'}</p><Action run={()=>runtime.command('feed.topic.set',{topic:managedTopic,mode:topicSettings[managedTopic]?.mode==='follow'?'normal':'follow'})}>关注 / 取消关注</Action><Action run={()=>runtime.command('feed.topic.set',{topic:managedTopic,mode:topicSettings[managedTopic]?.mode==='mute'?'normal':'mute'})}>静音 / 恢复推荐</Action><label>合并到 <select value={mergeInto} onChange={event=>setMergeInto(event.target.value)}><option value="">选择话题</option>{topicOptions.filter(value=>value!==managedTopic).map(value=><option key={value}>{value}</option>)}</select></label><Action disabled={!mergeInto} run={async()=>{await runtime.command('feed.topic.merge',{topic:managedTopic,into:mergeInto});setTopic(mergeInto);setMergeInto('')}}>合并</Action><Action run={async()=>{await runtime.command('feed.topic.remove',{topic:managedTopic});setTopic('')}}>从筛选中移除</Action><small>移除话题不会删除原动态；静音只降低推荐排序，仍可在“最新”中查看。</small></>}</details>
       <Observations go={go}/>
     </div>}
+    {initialDiscovery && ['draft','paused','blocked'].includes(text(initialDiscovery,'status')) && items.length>0 &&
+      <div className={styles.discoveryPrompt}><span>按初始选择发现公开资讯</span><Action run={()=>runtime.command('observation.start',{...entityRef(initialDiscovery),confirm:true})}>开始发现</Action></div>}
     <div className={styles.list}>
-      {!items.length && <div className={styles.empty}>{system||topic||showHidden?<><p>当前筛选下没有动态。</p><button type="button" onClick={()=>{setSystem('');setTopic('');setShowHidden(false)}}>重置筛选</button></>:<p>这里还没有动态。Agent 的真实发现或你验收的成果，会出现在这里。</p>}</div>}
-      {items.map(item => {
+      {!items.length && <div className={styles.empty}>{system||topic||showHidden?<><p>当前筛选下没有动态。</p><button type="button" onClick={()=>{setSystem('');setTopic('');setShowHidden(false)}}>重置筛选</button></>:initialDiscovery?<><b>探索 Agent 已根据你的初始选择准备关注方向</b><p>{text(initialDiscovery,'goal')}</p>{['draft','paused','blocked'].includes(text(initialDiscovery,'status'))?<Action run={()=>runtime.command('observation.start',{...entityRef(initialDiscovery),confirm:true})}>开始从公开资讯自动发现</Action>:<p>{initialDiscovery.data.status==='active'?'正在从匹配方向的公开资讯寻找真实来源；找到后会在这里显示。':'当前自动发现已结束；可在筛选设置中重新设定关注。'}</p>}</>:<p>这里还没有动态。Agent 的真实发现或你验收的成果，会出现在这里。</p>}</div>}
+      {items.slice(0,pageSize).map(item => {
         const agentId = (item.data.system === "advise" ? "advisor" : item.data.system) as V277AgentId;
         const agent = agentList.find(candidate => candidate.id === agentId);
         const Icon = agent?.icon;
@@ -123,6 +128,7 @@ export function PrivateFeed({ go, onDrag }: { go: (screen: Screen) => void; onDr
               <header className={styles.postHeader}><b>{agent?.name || "系统"} <span>Agent</span></b></header>
               <button type="button" className={styles.postContent} onClick={() => setDetailsId(detailsId === item.id ? null : item.id)}>
                 <strong>{text(item, "title")}</strong>
+                {item.data.synthetic===true&&<small role="status">隔离验收数据 · 不是真实 Agent 发现</small>}
                 {excerpt && <span className={styles.excerpt}>{excerpt}</span>}
               </button>
               {media.length>0&&<div className={styles.media}>{media.map(file=>file.mime.startsWith('image/')?<img key={file.id} src={`/api/elfred/attachments/${file.id}`} alt="动态附图" className={styles.thumbnail}/>:<video key={file.id} controls preload="none" src={`/api/elfred/attachments/${file.id}`} className={styles.thumbnail}/>)}</div>}
@@ -145,6 +151,7 @@ export function PrivateFeed({ go, onDrag }: { go: (screen: Screen) => void; onDr
           {detailsId === item.id && <div className={styles.details}><FeedDetails item={item} go={go} /></div>}
         </article>;
       })}
+      {items.length>pageSize&&<button type="button" className={styles.filterButton} onClick={()=>setPageSize(count=>count+30)}>加载更多 · 已显示 {pageSize} / {items.length}</button>}
     </div>
   </section>;
 }
