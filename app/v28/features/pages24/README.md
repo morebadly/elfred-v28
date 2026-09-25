@@ -6,6 +6,6 @@
 
 已接通的写入路径：文本文件进入 `document.create`，网址进入 `resource.create`（仅保存网址，不抓取正文），知识固化为工具走 `tool.save` 和 `tool.activate`，知识生成任务走 `task.create`，能力卡进入该工具所属 Agent 的持久对话并预填真实工具说明。资料编辑沿用现有 `profile.save`。
 
-能力分、自动升级、EMOS 记忆体检、Skill Foundry 版本与 Jev 评估需要 PR 未提交的服务或额外规则，目前不展示伪造数值，也不冒称调用成功。原 `tools/page2-checks` 的独立服务探针是 PR 提交者的历史验证工具，在本合并架构下不作为验收依据。
+能力分、自动升级、成果撤销裁定、EMOS 记忆体检、Skill Foundry 版本与 Jev 评估需要 PR 未提交的服务或额外规则，目前不展示伪造数值，也不冒称调用成功。成果详情保留来源和任务入口，撤下只改浏览器的假按钮已移除。原 `tools/page2-checks` 的独立服务探针是 PR 提交者的历史验证工具，在本合并架构下不作为验收依据。
 
 验收使用 `npm test`、`npm run test:runtime`、`npm run typecheck`、`npm run lint`、`npm run build`，以及登录后走查第二、四页。
