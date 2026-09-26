@@ -33,7 +33,7 @@ export function provisionInitialDiscovery(store,user,summary,{start=false}={}){
   // Migrate confirmed preferences on existing watches without overriding pause/stop decisions.
   let current=watch;
   if(['draft','active','paused','blocked'].includes(current.data.status)){
-   const preferences={goal,title:goal.slice(0,80),source_url:feedUrl(summary),source_urls:[feedUrl(summary),'https://sspai.com/feed','https://36kr.com/feed'],keywords:[discoveryQuery(summary)],interests:discoveryInterests(summary),auto_suggested:true};
+   const preferences={goal,title:goal.slice(0,80),source_url:feedUrl(summary),source_urls:[feedUrl(summary),'https://sspai.com/feed','https://www.ifanr.com/feed'],keywords:[discoveryQuery(summary)],interests:discoveryInterests(summary),auto_suggested:true};
    if(Object.entries(preferences).some(([key,value])=>JSON.stringify(current.data[key])!==JSON.stringify(value)))current=store.update(current,{...current.data,...preferences},user);
   }
   if(start&&current.data.status==='draft'){
