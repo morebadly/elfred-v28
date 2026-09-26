@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   useEffect,
@@ -48,8 +48,7 @@ import {
   setCardLevel,
   takePendingCard,
 } from "../api/page2-store";
-import { PAGE2_API, importFile, importLink, resolveMaterial, usePage2Live } from "../api/page2-api";
-import { draftTask } from "../api/task-draft";
+import { QUESTIONNAIRE_AVAILABLE, PAGE2_API, importFile, importLink, resolveMaterial, usePage2Live } from "../api/page2-api";
 import { launchWithSkill } from "../api/skill-launch";
 import styles from "../styles/knowledge.module.css";
 
@@ -239,6 +238,13 @@ export function KnowledgePage({
   // 空态下这一整块换成了"轻量测试"入口，五维卡不渲染，所以这里不用再为空态造数据；
   // 趋势照常算，非空态用得上。
   const radarPoints = valuePoints(abilityInsight.axes.map((axis) => axis.value));
+  // 五维怎么画（用户定过的口径）：**雷达只有一种画法**。
+  // 测试给的起点就是这条曲线本身的一部分，不另画虚线、不标灰、不写"不计入综合分"——
+  // 只留一句话说清"现在是起点，之后按真实表现更新（也会回落）"。
+  // `updatedLabels` = 已经被真实成果改动过的维度（够 3 条 → evidence，1~2 条 → growing）。
+  const updatedLabels = abilityInsight.axes
+    .filter((axis) => axis.source === "evidence" || axis.source === "growing")
+    .map((axis) => axis.label);
   const trend = abilityInsight.trend ? trendGeometry(abilityInsight.trend.points) : null;
   const trendDelta = abilityInsight.trend
     ? abilityInsight.trend.points[abilityInsight.trend.points.length - 1] -
@@ -572,7 +578,13 @@ export function KnowledgePage({
                 <Target size={26} />
               </i>
               <b>还没有能力洞察</b>
-              <p>验收真实任务成果后，这里会逐步形成能力画像</p>
+              <p>{QUESTIONNAIRE_AVAILABLE ? "完成一次轻量测试，生成你的初始能力画像" : "轻量测试服务尚未接通，已验收成果仍会保留"}</p>
+              {/* 以前这里跳到"能力画像"（对新人是一张全未知的雷达）。现在去填那份轻量测试：
+                  答完就有一张**起点图**（数值低），之后按真实成果慢慢更新。 */}
+              {QUESTIONNAIRE_AVAILABLE && <button type="button" onClick={() => go({ name: "questionnaire" })}>
+                开始测试
+              </button>}
+              {QUESTIONNAIRE_AVAILABLE && <em className={styles.emptyNote}>答完就有一张起点图；之后按真实结果慢慢更新</em>}
             </section>
           )}
           <div
@@ -605,16 +617,26 @@ export function KnowledgePage({
                 go({ name: "ability-profile" });
               }}
             >
-              <header>
-                <h3>
-                  <Compass size={17} />
-                  能力雷达
-                </h3>
-                <span>
-                  点击查看详情
-                  <ChevronRight size={16} />
-                </span>
-              </header>
+        <header>
+          <h3>
+            <Compass size={17} />
+            能力雷达
+          </h3>
+          <span>
+            点击查看详情
+            <ChevronRight size={16} />
+          </span>
+        </header>
+        {/* 这条说明是**如实**、不是免责：测试给的是起点（低），做完事会跟着动 ——
+            全都在这一条曲线上，不另画一条"不算分"的线。
+            （原来右边还挂了一个「做完事会变，久了也会回落」的角标，用户说多余，删了。） */}
+        {!insightEmpty ? (
+          <p className={styles.radarNote}>
+            {updatedLabels.length === 0
+              ? "起点来自那次测试"
+              : `${updatedLabels.join("、")} 已经按真实成果动过`}
+          </p>
+        ) : null}
               <div className="v277-radar-body">
                 <svg viewBox="0 0 180 144" aria-label="能力雷达图">
                   <g className="grid">
@@ -631,30 +653,30 @@ export function KnowledgePage({
                       />
                     ))}
                   </g>
-                  {radarPoints.length >= 3 && (
-                    <polygon
-                      className="value"
-                      points={radarPoints
-                        .map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)
-                        .join(" ")}
-                    />
-                  )}
-                  {radarPoints.map((point) => (
-                    <circle
-                      key={`${point.x.toFixed(1)}-${point.y.toFixed(1)}`}
-                      cx={point.x.toFixed(1)}
-                      cy={point.y.toFixed(1)}
-                      r="3"
-                    />
-                  ))}
+        {radarPoints.length >= 3 && (
+          <polygon
+            className="value"
+            points={radarPoints
+              .map((point) => `${point.x.toFixed(1)},${point.y.toFixed(1)}`)
+              .join(" ")}
+          />
+        )}
+        {radarPoints.map((point) => (
+          <circle
+            key={`${point.x.toFixed(1)}-${point.y.toFixed(1)}`}
+            cx={point.x.toFixed(1)}
+            cy={point.y.toFixed(1)}
+            r="3"
+          />
+        ))}
                   {abilityInsight.axes.map((axis, index) => (
                     <text
                       key={axis.label}
-                      className={axis.value === null ? "is-unknown" : undefined}
-                      x={RADAR_AXES[index].text.x}
-                      y={RADAR_AXES[index].text.y}
-                    >
-                      {axis.label} {insightEmpty ? "—" : (axis.value ?? "未知")}
+            className={axis.value === null ? "is-unknown" : undefined}
+            x={RADAR_AXES[index].text.x}
+            y={RADAR_AXES[index].text.y}
+          >
+            {axis.label} {insightEmpty ? "—" : (axis.value ?? "未知")}
                     </text>
                   ))}
                 </svg>
@@ -666,17 +688,20 @@ export function KnowledgePage({
                     )}
                   </b>
                   <p>综合能力</p>
-                  {insightEmpty ? (
-                    <>
-                      <span>还没有成果</span>
-                      <em>做出第一条成果，这里才开始长</em>
-                    </>
-                  ) : (
+        {/* 只有起点的时候**不再多写一行**：上面那句「起点来自那次测试」已经把话说完，
+            这里再挂一遍"起点来自测试 / 做完事会跟着动"就是重复（用户点名删掉）。
+            有了真实成果之后才在这儿报"几项成果 · 几次外部验证"。 */}
+        {insightEmpty ? (
+          <>
+            <span>还没有成果</span>
+            <em>做出第一条成果，这里才开始长</em>
+          </>
+        ) : updatedLabels.length > 0 ? (
                     <>
                       <span>{abilityInsight.outcomeCount} 项成果</span>
                       <em>{abilityInsight.externalChecks} 次外部验证 · 可追溯</em>
                     </>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </button>
@@ -905,9 +930,11 @@ export function KnowledgePage({
             go({ name: "evidence" });
           }}
           onCreateTask={async (card, goal) => {
-            // The saved tool opens its owning Agent's persistent chat with an editable prefill.
+            // ⚠️ 2026-09-26 对齐你们的新契约：`launchWithSkill` 现在返回 system + prompt，
+            //    直接带着可编辑的 prefill 进那个 Agent 的会话（我们原来那版是 conversationId）。
             const result = await launchWithSkill(runtime, card.title, goal);
             if (result.ok && result.system && result.prompt) {
+              setPendingSkill(card.title);
               setSelectedCapability(null);
               go({ name: "chat", id: result.system, prefill: result.prompt });
               return { ok: true };

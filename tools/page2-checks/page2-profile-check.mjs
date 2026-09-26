@@ -56,15 +56,18 @@ console.log("【我的页】标签显示：" + (profile.tags || []).filter((t) =
 const firstFeed = feed.items?.[0]?.title ?? "";
 console.log("【我的页】动态第一条出现在页面上：" + (firstFeed ? text.includes(firstFeed) : "（后端无动态）"));
 
-// 动态标签页
-const tab = page.getByRole("button", { name: "动态", exact: true }).first();
+// 最左边那栏 2026-09-26 从「动态」改成「Agent 动态」：内容换成了**朋友圈**的总览
+// （不再是我们后端那条"成果 + 记忆"合并流 —— 那条只在没有 runtime 的独立版里兜底）。
+// 这里只截图 + 如实打印看到的东西，具体验收在 page4-agent-feed.mjs。
+const tab = page.locator("nav.v277-profile-tabs button").filter({ hasText: "Agent 动态" }).first();
 if (await tab.count()) {
   await tab.click().catch(() => {});
   await page.waitForTimeout(1500);
-  await page.screenshot({ path: `${OUT}/06-profile-feed.png`, fullPage: true });
-  const feedText = await page.evaluate(() => document.body.innerText);
-  console.log("【动态页】条数命中：" + (feed.items || []).filter((item) => feedText.includes(item.title)).length +
-    "/" + (feed.count || 0));
+  await page.screenshot({ path: `${OUT}/06-profile-agent-feed.png`, fullPage: true });
+  const body = await page.evaluate(() => document.body.innerText.replace(/\n+/g, " | "));
+  console.log("【Agent 动态页】" + (body.includes("查看全部")
+    ? "总览：" + (body.match(/共 \d+ 条/) ?? ["（没读到条数）"])[0]
+    : body.includes("还没有 Agent 动态") ? "空态（朋友圈里没有动态）" : body.slice(0, 80)));
 }
 console.log("【页面报错】" + (errors.length ? errors.join(" | ") : "无"));
 await browser.close();

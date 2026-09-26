@@ -356,6 +356,15 @@ export type RadarAxisView = {
   label: string;
   value: number | null;
   previous?: number | null;
+  /** 这一维现在到哪一步：只有起点 / 起点+少量成果 / 够 3 条成果 / 还没数（后端算好，
+   *  前端只负责说人话 —— 画法**只有一种**，起点不是"不算分"的线） */
+  source?: "evidence" | "growing" | "baseline" | "insufficient";
+  /** 支撑这一维的真实成果条数；不足 minEvidence 时不给"已验证"的说法 */
+  samples?: number;
+  /** 还差几条才能"已验证"（界面写"还差 N 条"用它） */
+  missing?: number;
+  /** 置信下界（保守值），与卡的分同一坐标系 */
+  lower?: number | null;
 };
 
 export type AbilityInsightView = {
@@ -364,6 +373,12 @@ export type AbilityInsightView = {
   previousComposite?: number | null;
   outcomeCount: number;
   externalChecks: number;
+  /** 已经站住的维度数（够 3 条真实成果）；综合分只要有 ≥3 维有值就给，起点也算 */
+  verifiedDimensions?: number;
+  /** 做过那份轻量测试没有（有起点就有图可看） */
+  started?: boolean;
+  /** 有没有做过那份问卷（起点）；界面据此决定"引导测试"还是"重新测试" */
+  hasBaseline?: boolean;
   trend: {
     label: string;
     points: number[];
@@ -584,12 +599,21 @@ function applyLiveData(data: Page2Data) {
       label: axis.label,
       value: axis.value,
       previous: axis.previous,
+      // ⚠️ 这三个字段决定界面怎么"说人话"（起点 / 已经在动 / 还差几条）。
+      // 后端已经把它们算好了（services/dimensions.py），前端别再猜。
+      source: axis.source,
+      samples: axis.samples,
+      missing: axis.missing,
+      lower: axis.lower,
     }));
     abilityInsight.composite = data.insight.composite === null ? null : Math.round(data.insight.composite);
     abilityInsight.previousComposite =
       data.insight.previousComposite === null ? null : Math.round(data.insight.previousComposite);
     abilityInsight.outcomeCount = data.insight.outcomeCount;
     abilityInsight.externalChecks = data.insight.externalChecks;
+    abilityInsight.verifiedDimensions = data.insight.verifiedDimensions ?? 0;
+    abilityInsight.started = Boolean(data.insight.started ?? data.insight.baseline);
+    abilityInsight.hasBaseline = Boolean(data.insight.baseline);
     abilityInsight.trend = data.insight.trend;
 
     // 维度详情页：分数来自后端，卡与等级从这一维的卡里挑

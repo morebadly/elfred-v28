@@ -2,7 +2,7 @@
 
 Windows 本地业务入口：`npm run dev:local`，打开 `http://127.0.0.1:3000/v28`。原版界面连接本地 API、SQLite 和执行 Worker。
 
-详见 [本地启动与模型配置](docs/LOCAL-RUNBOOK.md) 和 [模块接线与验收记录](docs/IMPLEMENTATION.md)。下方保留原 Sites/Vinext 模板说明，其云端部署流程与本地业务服务不是同一运行方式。
+详见 [本地启动与模型配置](docs/LOCAL-RUNBOOK.md)、[模块接线与验收记录](docs/IMPLEMENTATION.md) 和 [PR #2 合并与服务器部署记录](docs/PR2-MERGE-AND-DEPLOY.md)。服务器运行当前统一业务服务时使用 `build:local` / `start:local`，并设置实际访问域名 `ELFRED_PUBLIC_ORIGIN`。下方保留原 Sites/Vinext 模板说明，其云端部署流程与本地业务服务不是同一运行方式。
 
 ## 原始 vinext-starter 说明
 

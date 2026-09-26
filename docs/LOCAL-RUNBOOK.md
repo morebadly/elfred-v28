@@ -17,6 +17,8 @@ npm run start:local
 
 默认监听 `127.0.0.1:3000`，数据存放于 `.elfred-data/elfred.sqlite`。`ELFRED_PORT` 修改端口；`ELFRED_DATA_DIR` 指定数据目录。数据库、会话、`.env.local` 已被 Git 忽略。
 
+服务器通过反向代理访问时，设置 `ELFRED_PUBLIC_ORIGIN` 为真实访问源，例如 `https://elfred.example`；Nginx 必须保留客户端 Host。生产模式根路径 `/` 跳转 `/v28`。服务器替换流程见 [PR #2 合并与服务器部署记录](./PR2-MERGE-AND-DEPLOY.md)。
+
 ## 模型配置
 
 在根目录创建 `.env.local`，填写供应商实际参数：

@@ -8,21 +8,25 @@ import { ModelProvider } from '../server/elfred/providers.mjs';
 import { Service } from '../server/elfred/service.mjs';
 import { Runtime } from '../server/elfred/runtime.mjs';
 import { apiHandler } from '../server/elfred/http.mjs';
+import {serverConfig} from '../server/elfred/server-config.mjs';
 
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
-const port=Number(process.env.ELFRED_PORT||3000);
-if(!Number.isInteger(port)||port<1024||port>65535) throw new Error('ELFRED_PORT must be 1024–65535');
-const origin=`http://127.0.0.1:${port}`;
+const {port,localOrigin:origin,publicOrigin}=serverConfig();
 const data=path.resolve(process.env.ELFRED_DATA_DIR||path.join(root,'.elfred-data'));
 const store=new Store(path.join(data,'elfred.sqlite'));
 const provider=new ModelProvider();
 const service=new Service(store,provider);
 const runtime=new Runtime(store,provider);
-const handler=apiHandler(service,{origin});
+const handler=apiHandler(service,{origin:publicOrigin});
 const app=next({dev:!process.argv.includes('--production'),dir:root,hostname:'127.0.0.1',port});
 await app.prepare();
 const nextHandler=app.getRequestHandler();
-const server=createServer(async(req,res)=>{if(!await handler(req,res)) await nextHandler(req,res);});
+const server=createServer(async(req,res)=>{
+  if(process.argv.includes('--production') && req.url==='/') {
+    res.writeHead(302,{Location:'/v28','Cache-Control':'no-store'});res.end();return;
+  }
+  if(!await handler(req,res)) await nextHandler(req,res);
+});
 server.requestTimeout=60000;
 const pidFile=path.join(data,'server.pid');
 server.listen(port,'127.0.0.1',()=>{writeFileSync(pidFile,String(process.pid));runtime.start();console.log(`Elfred 本地运行：${origin}/v28\n数据目录：${data}\n模型：${provider.status().configured?'已配置，等待实际调用验证':'未配置；本地任务、知识、消息与共创仍可使用'}`);});

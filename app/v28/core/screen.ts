@@ -43,7 +43,8 @@ export type Screen =
   | { name: "evidence" }
   | { name: "evidence-detail"; id: string }
   | { name: "dimension"; id: string }
-  | { name: "ability-profile" }
+| { name: "ability-profile" }
+| { name: "questionnaire" }
   | {
       name: "utility";
       kind:

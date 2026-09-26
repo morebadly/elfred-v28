@@ -42,7 +42,10 @@ await page.locator('nav button[aria-label="我的"]').first().click().catch(() =
 await page.waitForTimeout(2500);
 const profile = await text();
 await page.screenshot({ path: `${OUT}/${tag}-profile.png`, fullPage: true });
-console.log(`【第四页】动态空态「还没有动态」：${profile.includes("还没有动态")} | 名字待设置：${profile.includes("还没有名字")} | 标签待设置：${profile.includes("添加标签")}`);
+// 最左边那栏现在是「Agent 动态」（朋友圈那份的总览）：有 runtime 就是
+// "还没有 Agent 动态"，没有 runtime（我们自己单独跑的那份）才是旧的"还没有动态"。
+// 昵称的默认值是「路人」（用户 2026-09-26 定的），所以"没起名字"时页面上就是这两个字
+console.log(`【第四页】动态空态：${profile.includes("还没有 Agent 动态") || profile.includes("还没有动态")} | 昵称默认「路人」：${profile.includes("路人")} | 标签待设置：${profile.includes("+ 标签") || profile.includes("添加标签")}`);
 
 console.log(`【页面报错】${errors.length ? [...new Set(errors)].join(" | ") : "无"}`);
 console.log(`【失败请求】${failed.length ? [...new Set(failed)].slice(0, 4).join(" | ") : "无"}`);

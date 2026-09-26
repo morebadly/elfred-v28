@@ -1327,3 +1327,56 @@
     margin-top: 15px;
   }
 }
+
+/* ── 编辑资料页的收口（2026-09-26，第二/四页归我们）────────────────────
+   两个坑，都在用户截图里能看到：
+   ① 头像用的是**贴图 sprite**（background-position:-20px -286px），被
+      `.phone-stage *{background-image:none!important}` 干掉之后就是一块白；
+      这里换成"品牌渐变 + 白人形"，和"我的"页那个头像同一个样子。
+   ② 三段标题 18px 和下面的卡片没有层级差 → 改成 13.5px 灰小标题。 */
+.v279-profile-edit-page .v279-owner-avatar {
+  background-image: linear-gradient(140deg, #7b96ff 0%, #4c6ef5 100%) !important;
+  background-size: cover !important;
+  background-position: center !important;
+  overflow: hidden;
+}
+.v279-profile-edit-page .v279-owner-avatar::before {
+  content: "";
+  position: absolute;
+  left: calc(50% - 13px);
+  top: 19px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #fff;
+}
+.v279-profile-edit-page .v279-owner-avatar::after {
+  content: "";
+  position: absolute;
+  left: calc(50% - 23px);
+  bottom: 11px;
+  width: 46px;
+  height: 24px;
+  border-radius: 23px 23px 0 0;
+  background: #fff;
+}
+.v279-profile-edit-page .v279-profile-visual-editor h2,
+.v279-profile-edit-page .v279-profile-form-section h2,
+.v279-profile-edit-page .v279-profile-display-section h2 {
+  margin-bottom: 8px !important;
+  color: #8f979f !important;
+  font-size: 13.5px !important;
+  font-weight: 620 !important;
+  line-height: 20px !important;
+}
+.v279-profile-edit-page .v279-profile-cover:not([style*="--v279-cover-image"]) {
+  border-style: dashed !important;
+  border-color: #c9d2dc !important;
+}
+.v279-profile-edit-page .v279-username-field::after {
+  content: "登录账号，不可修改";
+  grid-column: 1 / -1;
+  margin-top: 2px;
+  color: #a6adb4;
+  font-size: 11px;
+}

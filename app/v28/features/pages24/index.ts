@@ -22,6 +22,9 @@ export { AbilityProfilePage } from "./screens/ability-profile-page";
 export { DimensionDetailPage } from "./screens/dimension-detail-page";
 export { EvidenceDetailPage } from "./screens/evidence-detail-page";
 export { EvidenceListPage } from "./screens/evidence-list-page";
+export { QuestionnairePage } from "./screens/questionnaire-page";
+export { SettingsPage } from "./screens/settings-page";
+export { ProfileEditPage } from "./screens/profile-edit-page";
 
 // ── 组件 ─────────────────────────────────────────────────────────────
 export { CapabilitySheet } from "./parts/capability-sheet";

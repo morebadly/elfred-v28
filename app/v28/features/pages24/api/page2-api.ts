@@ -9,6 +9,8 @@ import { useEffect, useSyncExternalStore } from "react";
 import type { Entity, Snapshot } from "../../live/types";
 
 export const PAGE2_API = "/api/elfred";
+// PR #2 does not ship the questionnaire service or its scoring implementation.
+export const QUESTIONNAIRE_AVAILABLE = false;
 
 /**
  * 预留功能的开关（**默认关，界面不展示**）。
@@ -74,11 +76,28 @@ export type LiveEvidenceDetail = {
 };
 
 export type LiveInsight = {
-  axes: { label: string; value: number | null; previous: number | null }[];
+  axes: {
+    label: string;
+    value: number | null;
+    previous: number | null;
+    /** 这一维的数字现在到哪一步了（后端算好，前端只说人话）：
+     *  baseline = 只有测试给的起点 · growing = 起点 + 1~2 条成果 ·
+     *  evidence = 够 3 条真实成果 · insufficient = 没测试也没攒够（不给数字） */
+    lower?: number | null;
+    source?: "evidence" | "growing" | "baseline" | "insufficient";
+    samples?: number;
+    missing?: number;
+    uncertainty?: number;
+  }[];
   composite: number | null;
   previousComposite: number | null;
   outcomeCount: number;
   externalChecks: number;
+  verifiedDimensions?: number;
+  minEvidence?: number;
+  /** 做过那份轻量测试没有（有起点就有图可看） */
+  started?: boolean;
+  baseline?: { axes: Record<string, number>; guard: number; version: number; takenAt: string } | null;
   trend: { label: string; points: number[]; weeks: number; note: string } | null;
 };
 
@@ -289,6 +308,34 @@ export async function fetchContract(skillName: string, goal = ""): Promise<TaskC
     note: "来自本人已保存的工具版本" };
 }
 
+// ── 新用户那份「轻量测试」（问卷 → 五维起点）──────────────────────────
+// 题目由**后端**给（改题不用发前端）；选项顺序就是分值顺序（低 → 高）。
+// 题面里混了反向计分的题，但那是后端的事 —— 前端只按顺序画选项，不猜方向。
+export type QuestionnaireItem = { id: string; text: string; options: string[] };
+export type Questionnaire = {
+  version: number;
+  dimensions: string[];
+  items: QuestionnaireItem[];
+  note: string;
+};
+
+export async function fetchQuestionnaire(): Promise<Questionnaire | null> {
+  return request<Questionnaire>("/page2/questionnaire", undefined, 15000);
+}
+
+/** 提交作答 → 后端建/覆盖那份起点，并把最新的洞察估计一起带回来。 */
+export async function submitQuestionnaire(answers: { id: string; choice: number }[]) {
+  const result = await post<{
+    ok: boolean;
+    reason?: string;
+    note?: string;
+    axes?: Record<string, number>;
+    guard?: number;
+  }>("/page2/questionnaire", { answers }, 30000);
+  if (result?.ok) await loadPage2(true);      // 提交完让第二页立刻按新数据重画
+  return result;
+}
+
 /**
  * 换人。**必须把上一个人的数据丢掉再重拉**：缓存里还留着 A 的卡，B 进来就会
  * 看到 A 的东西（串号）。这是本地跑两个账号测出来的。
@@ -480,6 +527,8 @@ export type LiveProfile = {
   credibility: number | null;
   identityDescribe: string;
   filled: boolean;
+  /** 主页要不要显示等级与理解度（存在我们后端；没设过 = true） */
+  showLevel?: boolean;
 };
 
 export type LiveFeedItem = {
@@ -531,17 +580,18 @@ export function fetchProfile() {
   return Promise.resolve<LiveProfile>({ available: true, name: field(profile, "name"), bio: field(profile, "bio"),
     tags: Array.isArray(profile.data.tags) ? profile.data.tags as string[] : [], avatar: field(profile, "avatar"),
     background: field(profile, "cover"), headline: "", level: null, daysTracked: null, credibility: null,
-    identityDescribe: "", filled: Boolean(field(profile, "name")) });
+    identityDescribe: "", filled: Boolean(field(profile, "name")), showLevel: profile.data.showLevel === true });
 }
 
 /** 个人页资料（写）：存完把后端回的那份直接给调用方用，避免前端自己拼 */
-export async function saveProfile(patch: Partial<Pick<LiveProfile, "name" | "bio" | "tags" | "avatar" | "background">>) {
+export async function saveProfile(patch: Partial<Pick<LiveProfile, "name" | "bio" | "tags" | "avatar" | "background" | "showLevel">>) {
   const profile = activeSnapshot?.objects.profile?.[0];
-  if (!profile || !activeCommand) return null;
+  if (!profile || !activeCommand) throw new Error("请先登录再编辑资料");
   await activeCommand("profile.save", { id: profile.id, version: profile.version, name: patch.name ?? field(profile, "name"),
     bio: patch.bio ?? field(profile, "bio"), tags: patch.tags ?? profile.data.tags ?? [],
     ...(patch.avatar !== undefined ? { avatar: patch.avatar } : {}),
-    ...(patch.background !== undefined ? { cover: patch.background } : {}) });
+    ...(patch.background !== undefined ? { cover: patch.background } : {}),
+    ...(patch.showLevel !== undefined ? { showLevel: patch.showLevel } : {}) });
   return { ok: true, saved: Object.keys(patch), profile: await fetchProfile() };
 }
 
@@ -562,6 +612,25 @@ export function fetchRelationships() {
     .map(item => ({ id: item.id, name: field(item, "name") || field(item, "handle"), role: "好友", stage: "已连接",
       photo: "", chatId: field(item, "conversation_id") }));
   return Promise.resolve({ available: true, relationships, count: relationships.length });
+}
+
+/** 上游服务状态（我们后端 /health/deps）：设置页那一栏用它把"为什么记忆库是空的"说清楚 */
+export type LiveDeps = {
+  allGreen: boolean;
+  emos: { ok: boolean; reason: string; impact: string };
+  skill_foundry: { ok: boolean; reason: string; impact: string };
+  gateway: { ok: boolean; reason: string; impact: string };
+  jev: { configured: boolean; baseUrl: string; model: string; hint: string };
+};
+
+export function fetchHealthDeps() {
+  if (!activeSnapshot) return Promise.resolve(null);
+  return Promise.resolve<LiveDeps>({ allGreen: false,
+    emos: { ok: false, reason: "未接入独立服务", impact: "当前记忆保存在应用数据库" },
+    skill_foundry: { ok: false, reason: "未接入独立服务", impact: "当前使用已保存的工具说明" },
+    gateway: { ok: true, reason: "当前登录会话已连接", impact: "" },
+    jev: { configured: activeSnapshot.provider.jev === "configured", baseUrl: "", model: "", hint: "以服务端配置为准，真实调用效果仍需验收" }
+  });
 }
 
 /** 记忆体检：长期未用 / 低置信 / 没标签 / 冲突（只读，不改任何东西） */

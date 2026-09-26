@@ -156,9 +156,13 @@ const insight = await p2("/insight/abilities");
 const alignment = await p2("/alignment");
 // ⚠️ 字段是 `axes` + `label/value`（不是 dimensions/name）——第一次写错，白报一条失败
 const dims = (insight?.axes || []).map((d) => `${d.label}=${d.value}`);
-check("雷达里「交付」这一维有值（不是未知）",
-      (insight?.axes || []).some((d) => d.label === "交付" && d.value !== null),
-      dims.join(" ") || "(空)");
+// ⚠️ 断言口径改过：**1 条成果不该给维度结论**。新规则是"少于 3 条真实成果 → 不给 θ，
+// 只显示样本不足"（见 services/dimensions.py 的 MIN_EVIDENCE）。所以这里验的是
+// **这条成果确实进了估计**（samples=1、还差 2 条），而不是"维度必须有值"。
+const delivery = (insight?.axes || []).find((d) => d.label === "交付");
+check("这条成果进了「交付」的估计，但样本不足仍显示未知",
+      delivery?.samples === 1 && delivery?.value === null && delivery?.missing === 2,
+      `samples=${delivery?.samples} value=${delivery?.value} missing=${delivery?.missing}（全维：${dims.join(" ")}）`);
 // 综合分要**至少 3 个维度有数据**才给（1/5 个维度不该报"综合能力"）。
 // 新账号只有"交付"一维有值，所以这里应该**没有**综合分，而不是一个数。
 check("维度不足时不给综合分（不拿 1/5 维冒充综合）",

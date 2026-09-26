@@ -1,0 +1,388 @@
+/* 编辑资料（2026-09-26 重做）：形象区 + 字段行 + 每字段一个编辑弹层。
+   规矩：字段行只显示"值"，点开才编辑；只读的账号行没有箭头、灰显。
+
+   ⚠️ 凡"深底/彩底 + 白字"的，`color` 一律写 `#fff !important`：
+   这一屏的按钮有上层规则用 `color: inherit` 把字色压成深色，结果就是**黑底黑字**
+   （实测：弹层里的「保存」按钮看起来像一块黑糊糊的方块）。 */
+
+.section {
+  margin-top: 22px;
+}
+
+.section h2 {
+  margin: 0 0 8px 2px;
+  color: #8f979f;
+  font-size: 13.5px;
+  font-weight: 620;
+}
+
+/* ── 封面 ─────────────────────────────────────────────────────────── */
+.cover {
+  position: relative;
+  width: 100%;
+  height: 156px;
+  display: block;
+  padding: 0;
+  border: 1px dashed #c9d2dc;
+  border-radius: 18px;
+  /* ⚠️ !important：`product.css` 里有 `.phone-stage *{background-image:none!important}`，
+     不加它，选了图也画不出来（第四页封面踩过同一个坑） */
+  background-image: linear-gradient(160deg, #eef3fb 0%, #e6ecf7 55%, #dfe7f4 100%) !important;
+  background-position: center !important;
+  background-size: cover !important;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.cover[data-has-image="true"] {
+  border-style: solid;
+  border-color: #e4e7eb;
+}
+
+.coverAction {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 16px;
+  background: rgba(26, 31, 35, 0.44);
+  color: #fff !important;
+  font-size: 12px;
+  font-weight: 620;
+  backdrop-filter: blur(8px);
+}
+
+.coverHint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 16px;
+  color: #97a1ac;
+  font-size: 12px;
+  font-style: normal;
+  text-align: center;
+}
+
+/* ── 头像（压在封面下沿，右下角相机徽标）──────────────────────────── */
+.avatarRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: -30px;
+  padding-left: 14px;
+}
+
+.avatar {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 3px solid #fff;
+  border-radius: 50%;
+  /* 默认头像：品牌渐变 + 白色首字/人形（和历史那版一个样子） */
+  background-image: linear-gradient(140deg, #7b96ff 0%, #4c6ef5 100%) !important;
+  background-position: center !important;
+  background-size: cover !important;
+  color: #fff !important;
+  font-size: 28px;
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(23, 26, 29, 0.12);
+  cursor: pointer;
+}
+
+.avatarBadge {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #171a1d;
+  color: #fff !important;
+}
+
+.avatarHint {
+  height: 32px;
+  margin-bottom: 6px;
+  padding: 0 13px;
+  border: 1px solid #d8dde3;
+  border-radius: 16px;
+  background: #fff;
+  color: #4b5563;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── 字段行 ───────────────────────────────────────────────────────── */
+.row {
+  width: 100%;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 15px;
+  border: 1px solid #eceef1;
+  border-bottom: 0;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:first-of-type {
+  border-radius: 16px 16px 0 0;
+}
+
+.row:last-of-type {
+  border-bottom: 1px solid #eceef1;
+  border-radius: 0 0 16px 16px;
+}
+
+.row:active {
+  background: #fafbfc;
+}
+
+.row > span {
+  display: flex;
+  flex-direction: column;
+  color: #6f7a84;
+  font-size: 13.5px;
+}
+
+.row > span small {
+  margin-top: 2px;
+  color: #9aa2ab;
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.row > b {
+  min-width: 0;
+  overflow: hidden;
+  color: #171a1d;
+  font-size: 14.5px;
+  font-weight: 550;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowEmpty {
+  color: #a6adb4 !important;
+  font-weight: 450 !important;
+}
+
+.row > svg {
+  color: #c2c8ce;
+}
+
+/* 只读行：没有箭头、灰色、不是按钮的样子 */
+.rowReadOnly {
+  cursor: default;
+}
+
+.rowReadOnly > em {
+  grid-column: 2 / 4;
+  margin-top: -6px;
+  color: #a6adb4;
+  font-size: 11px;
+  font-style: normal;
+}
+
+/* 开关那一行：左边是标题+说明，右边是开关（不是箭头） */
+.rowToggle {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.rowToggle > span b {
+  display: block;
+  color: #171a1d;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.switch {
+  width: 52px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  background: #e4e7eb;
+  color: #8b939b;
+  transition: background 0.16s ease;
+}
+
+.switchOn {
+  background: #4c6ef5;
+  color: #fff !important;
+}
+
+.warn {
+  margin: 8px 2px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff8e6;
+  color: #8a6100;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.footNote {
+  margin: 22px 2px 0;
+  color: #9aa2ab;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.footNote button {
+  display: block;
+  margin-top: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #4c6ef5;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ── 单字段编辑弹层 ───────────────────────────────────────────────── */
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 60;
+  display: grid;
+  gap: 10px;
+  padding: 10px 20px 26px;
+  border-radius: 24px 24px 0 0;
+  background: #fff;
+  box-shadow: 0 -8px 30px rgba(23, 26, 29, 0.14);
+}
+
+.sheetHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sheetHead h2 {
+  margin: 0;
+  font-size: 17px;
+}
+
+.sheetSave {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 17px;
+  background: #171a1d;
+  color: #fff !important;
+  font-size: 13.5px;
+  font-weight: 640;
+  cursor: pointer;
+}
+
+.sheetInput,
+.sheetArea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e4e7eb;
+  border-radius: 14px;
+  background: #fafbfc;
+  color: #171a1d;
+  font-size: 15px;
+  font-family: inherit;
+}
+
+.sheetInput {
+  height: 48px;
+}
+
+.sheetArea {
+  height: 116px;
+  line-height: 1.6;
+  resize: none;
+}
+
+.sheetNote {
+  margin: 0;
+  color: #9aa2ab;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.sheetCount {
+  margin: -4px 0 0;
+  color: #a6adb4;
+  font-size: 12px;
+  text-align: right;
+}
+
+/* ── 领域标签：预设 chips 多选（不是手打）───────────────────────────
+   参考的是标签选择器的通用做法：一排预设 chips，点了变实心选中，右上/上方写清上限，
+   下面能看到已选的。分组只是为了扫得快。 */
+.tagCount {
+  margin: 0;
+  color: #6b7780;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.tagGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.tagGroup h3 {
+  margin: 0;
+  color: #9aa2ab;
+  font-size: 12px;
+  font-weight: 620;
+}
+
+.tagOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tagOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0 13px;
+  border: 1px solid #e2e6ea;
+  border-radius: 17px;
+  background: #fff;
+  color: #3d444b;
+  font-size: 13.5px;
+  cursor: pointer;
+}
+
+.tagOption:active {
+  transform: scale(0.97);
+}
+
+.tagOptionOn {
+  border-color: #4c6ef5;
+  background: #4c6ef5;
+  color: #fff !important;
+  font-weight: 600;
+}
+
+.tagOptionOn svg {
+  color: #fff !important;
+}
