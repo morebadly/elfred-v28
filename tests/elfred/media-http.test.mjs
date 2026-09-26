@@ -30,6 +30,6 @@ test('真实 HTTP 附件、私有沙箱预览、消息游标及持续事件通�
 });
 test('Office 实际解析保留中文与表格单元格引用',async()=>{
  const script="import io,zipfile,base64; b=io.BytesIO(); z=zipfile.ZipFile(b,'w'); z.writestr('xl/sharedStrings.xml','<sst><si><t>共创项目</t></si></sst>'); z.writestr('xl/worksheets/sheet1.xml','<worksheet><sheetData><row><c r=\"A1\" t=\"s\"><v>0</v></c><c r=\"B1\"><v>42</v></c></row></sheetData></worksheet>'); z.close(); print(base64.b64encode(b.getvalue()).decode())";
- const base64=execFileSync(process.env.ELFRED_PYTHON||'python',['-X','utf8','-c',script],{encoding:'utf8',windowsHide:true}).trim();
+ const base64=execFileSync(process.env.ELFRED_PYTHON||(process.platform==='win32'?'python':'python3'),['-X','utf8','-c',script],{encoding:'utf8',windowsHide:true}).trim();
  const output=await parseFile({data:{name:'项目.xlsx',base64}});assert.match(output,/A1: 共创项目/);assert.match(output,/B1: 42/);
 });

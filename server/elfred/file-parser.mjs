@@ -10,7 +10,7 @@ export async function parseFile(attachment){
  const data=attachment.data,ext=data.name.split('.').pop().toLowerCase(),bytes=Buffer.from(data.base64,'base64');
  if(['txt','md','csv','json'].includes(ext))return bytes.toString('utf8').slice(0,500000);
  if(['docx','pptx','xlsx'].includes(ext))return await new Promise((resolve,reject)=>{
-   const child=execFile(process.env.ELFRED_PYTHON||'python',['-X','utf8',fileURLToPath(new URL('../../scripts/parse-office.py',import.meta.url))],{timeout:20000,maxBuffer:3000000,windowsHide:true},(error,stdout)=>{if(error){reject(new Error('Office 文件解析失败，文件可能已损坏或加密'));return;}try{resolve(JSON.parse(stdout).content);}catch{reject(new Error('Office 解析响应无效'));}});child.stdin.end(JSON.stringify({base64:data.base64}));
+   const child=execFile(process.env.ELFRED_PYTHON||(process.platform==='win32'?'python':'python3'),['-X','utf8',fileURLToPath(new URL('../../scripts/parse-office.py',import.meta.url))],{timeout:20000,maxBuffer:3000000,windowsHide:true},(error,stdout)=>{if(error){reject(new Error('Office 文件解析失败，文件可能已损坏或加密'));return;}try{resolve(JSON.parse(stdout).content);}catch{reject(new Error('Office 解析响应无效'));}});child.stdin.end(JSON.stringify({base64:data.base64}));
  });
  if(ext==='pdf'){
    const dir=await mkdtemp(path.join(tmpdir(),'elfred-parse-'));
