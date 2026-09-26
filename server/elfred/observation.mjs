@@ -3,6 +3,7 @@ import {bounded,string,enumeration} from './policy.mjs';
 import {externalToolCommand} from './external-tools.mjs';
 import {taskCommand} from './runtime.mjs';
 import {readRss,validatedFeedUrl} from './rss.mjs';
+import {discoveryRelevance} from './discovery-policy.mjs';
 
 const activeRuns=['queued','running','pause_requested','cancel_requested'];
 const success=['completed','awaiting_acceptance','awaiting_review'];
@@ -40,7 +41,7 @@ export function observationCommand(store,user,action,input){
   if(!['draft','paused','blocked'].includes(watch.data.status))fail('INVALID_STATE','当前观察不能启动');
   if(input.confirm!==true||!watch.data.source_url&&input.model_consent!==true)fail('CONSENT_REQUIRED','请确认信息源、公开互联网范围、频率、期限和总额度');
   if(watch.data.source_url){
-   if(watch.data.expires<=Date.now()||watch.data.checks>=watch.data.max_checks)fail('STOP_LIMIT','订阅已到期限或检查次数上限');
+   if(!watch.data.auto_managed&&(watch.data.expires<=Date.now()||watch.data.checks>=watch.data.max_checks))fail('STOP_LIMIT','订阅已到期限或检查次数上限');
    return {id:store.update(watch,{...watch.data,status:'active',next_at:Date.now(),authorized_at:now(),last_error:null},user).id};
   }
   const task=store.get(watch.data.task_id),run=store.get(task?.data.run_id||null);
@@ -103,22 +104,30 @@ export function tickObservations(store,provider,at=Date.now()){
 export async function tickRssObservations(store,reader=readRss,at=Date.now()){
  const due=store.list('observation').filter(w=>w.data.source_url&&w.data.status==='active'&&Number(w.data.next_at)<=at).slice(0,1);
  for(const candidate of due){
-  if(candidate.data.expires<=at||candidate.data.checks>=candidate.data.max_checks){
+  if(store.visible(candidate.owner,'settings')[0]?.data.agents?.[candidate.data.system]?.enabled===false){store.transaction(()=>{const watch=store.get(candidate.id);if(watch?.data.status==='active')store.update(watch,{...watch.data,status:'paused',last_error:'负责 Agent 已停用，资讯发现已暂停'},watch.owner)});continue;}
+  if((candidate.data.expires<=at||candidate.data.checks>=candidate.data.max_checks)&&!candidate.data.auto_managed){
    store.transaction(()=>{const w=store.get(candidate.id);if(w?.data.status==='active')store.update(w,{...w.data,status:w.data.expires<=at?'expired':'completed'},w.owner)});continue;
   }
   let items;
-  try { items=await reader(candidate.data.source_url); }
-  catch { store.transaction(()=>{const w=store.get(candidate.id);if(w?.data.status==='active')store.update(w,{...w.data,status:'blocked',last_error:'RSS 来源暂时无法读取，请核对地址后继续；本次没有发布动态'},w.owner)});continue; }
+  try {
+   const urls=(candidate.data.auto_suggested?candidate.data.source_urls:null)||[candidate.data.source_url];
+   const results=await Promise.allSettled(urls.slice(0,3).map(async url=>(await reader(url)).map(item=>({...item,discovered_from:url}))));
+   const successful=results.filter(result=>result.status==='fulfilled');
+   if(!successful.length)throw new Error('No feed available');
+   items=[...new Map(successful.flatMap(result=>result.value).map(item=>[item.url,item])).values()];
+  }
+  catch { store.transaction(()=>{const w=store.get(candidate.id);if(w?.data.status==='active'&&w.version===candidate.version){const failures=(w.data.failures||0)+1;store.update(w,{...w.data,status:w.data.auto_managed?'active':'blocked',failures,next_at:at+Math.min(86400000,900000*2**Math.min(failures-1,7)),last_error:w.data.auto_managed?'资讯来源暂时无法读取，将自动重试；本次没有发布动态':'RSS 来源暂时无法读取，请核对地址后继续；本次没有发布动态'},w.owner)}});continue; }
   store.transaction(()=>{
    const watch=store.get(candidate.id);
-   if(!watch||watch.data.status!=='active'||watch.version!==candidate.version||watch.data.expires<=Date.now())return;
-   const seen=new Set(watch.data.seen_items||[]),fresh=items.filter(item=>!seen.has(item.id));
-   const matches=(watch.data.auto_suggested?fresh:fresh.filter(item=>watch.data.keywords.some(word=>(item.title+' '+item.summary).toLocaleLowerCase().includes(word.toLocaleLowerCase())))).slice(0,watch.data.auto_suggested&&!watch.data.baseline?3:5);
+   if(!watch||watch.data.status!=='active'||watch.version!==candidate.version||(!watch.data.auto_managed&&watch.data.expires<=Date.now()))return;
+   const seen=new Set(watch.data.seen_items||[]),seenUrls=new Set(watch.data.seen_urls||[]),fresh=items.filter(item=>!seenUrls.has(hash(item.url))&&(watch.data.auto_suggested||!seen.has(item.id)));
+   const interests=watch.data.interests||[];
+   const matches=(watch.data.auto_suggested?(interests.length?fresh.filter(item=>discoveryRelevance(item,interests)>0).sort((a,b)=>discoveryRelevance(b,interests)-discoveryRelevance(a,interests)):fresh):fresh.filter(item=>watch.data.keywords.some(word=>(item.title+' '+item.summary).toLocaleLowerCase().includes(word.toLocaleLowerCase())))).slice(0,watch.data.auto_suggested&&!watch.data.baseline?3:5);
    if((watch.data.baseline||watch.data.auto_suggested)&&store.visible(watch.owner,'settings')[0]?.data.agents?.[watch.data.system]?.enabled!==false){
-    for(const item of [...matches].reverse())store.unique('feed',`${watch.owner}:rss:${hash(item.url)}`,()=>store.add('feed',watch.owner,{title:item.title,summary:item.summary||'查看原始来源并核对内容。',system:watch.data.system,topic:watch.data.auto_suggested?'初始化方向':watch.data.goal.slice(0,100),status:'active',purpose:'discovery',event_key:`rss:${watch.id}:${hash(item.id)}`,task_id:null,source_subscription_id:watch.id,external_url:item.url,published_at:item.published_at,source_name:new URL(watch.data.source_url).hostname,source_refs:[],reason:watch.data.auto_suggested?'Agent 根据初始化偏好选择公开资讯查询，取得真实 RSS 条目；相关性仍需核对':'来自你授权的 RSS 来源，标题或摘要命中关注词',personal_value:watch.data.goal,uncertainty:'订阅标题和摘要仅是线索，事实与行动条件仍需核对原文',comments:[],attachments:[]}));
+    for(const item of [...matches].reverse())store.unique('feed',`${watch.owner}:rss:${hash(item.url)}`,()=>store.add('feed',watch.owner,{title:item.title,summary:item.summary||'查看原始来源并核对内容。',system:watch.data.system,topic:watch.data.auto_suggested?'初始化方向':watch.data.goal.slice(0,100),status:'active',purpose:'discovery',event_key:`rss:${watch.id}:${hash(item.id)}`,task_id:null,source_subscription_id:watch.id,external_url:item.url,published_at:item.published_at,source_name:new URL(item.discovered_from||watch.data.source_url).hostname,source_refs:[],reason:watch.data.auto_suggested?'Agent 根据初始化偏好选择公开资讯查询，取得真实 RSS 条目；相关性仍需核对':'来自你授权的 RSS 来源，标题或摘要命中关注词',personal_value:watch.data.goal,uncertainty:'订阅标题和摘要仅是线索，事实与行动条件仍需核对原文',comments:[],attachments:[]}));
    }
    const checks=watch.data.checks+1;
-   store.update(watch,{...watch.data,checks,baseline:true,seen_items:[...new Set([...fresh.map(item=>item.id),...seen])].slice(0,300),last_checked_at:now(),last_new_sources:watch.data.baseline?matches.length:0,next_at:at+watch.data.interval_hours*3600000,status:checks>=watch.data.max_checks?'completed':'active',last_error:null},watch.owner);
+   store.update(watch,{...watch.data,checks,baseline:true,seen_items:[...new Set([...fresh.map(item=>item.id),...seen])].slice(0,300),seen_urls:[...new Set([...fresh.map(item=>hash(item.url)),...seenUrls])].slice(0,300),last_checked_at:now(),last_new_sources:matches.length,next_at:at+watch.data.interval_hours*3600000,status:watch.data.auto_managed||checks<watch.data.max_checks?'active':'completed',failures:0,last_error:null},watch.owner);
   });
  }
 }

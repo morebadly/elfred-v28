@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { RuntimeProvider, useRuntime, projectState, entityRef } from './runtime-context';
 import { ConnectedProject, AssetEditor, InboxPage } from './runtime-panels';
 import {OnboardingConversation} from '../features/home/onboarding-conversation';
+import {SwarmPage} from '../features/home/swarm-page';
 import {ToolsPage,ToolEditor} from '../features/home/tools-page';
 import {AgentLevelPage} from '../features/home/agent-level-page';
 import {AgentConversationPage} from '../features/home/agent-conversation';
@@ -545,6 +546,7 @@ export function V277App() {
     if (screen.name === "create-tool")
       return runtime?<ToolEditor key={screen.id||'new'} id={screen.id} onBack={back} go={go}/>:<CreateToolPage onBack={back} notify={notify}/>;
     if (screen.name === 'inbox' && runtime) return <InboxPage go={go} onBack={back}/>;
+    if (screen.name === 'swarm' && runtime) return <SwarmPage go={go} onBack={back}/>;
     if (screen.name === "utility")
       return (
         <UtilityPage kind={screen.kind} go={go} onBack={back} notify={notify} />
@@ -629,6 +631,7 @@ export function V277App() {
       "friend-profile",
       "new-task",
       "my-tools",
+      "swarm",
       "tool-detail",
       "create-tool",
     ].includes(screen.name);
@@ -640,7 +643,7 @@ export function V277App() {
         <BottomNav
           screen={screen}
           go={go}
-          openElfred={() => go({ name: "chat", id: "elfred" })}
+          openElfred={() => go(runtime ? { name: "swarm" } : { name: "chat", id: "elfred" })}
         />
       )}
       {toast && <Toast text={toast} />}

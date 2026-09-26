@@ -20,7 +20,8 @@ export type Screen =
         | "new-task"
         | "onboarding-chat"
         | "my-tools"
-        | "inbox";
+        | "inbox"
+        | "swarm";
     }
   | { name: "tasks"; view?: "today" | "projects" }
   | {name:"create-tool";id?:string}

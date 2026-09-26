@@ -26,6 +26,7 @@ import {externalToolCommand} from './external-tools.mjs';
 import {feedCommand} from './feed.mjs';
 import {observationCommand} from './observation.mjs';
 import {provisionInitialDiscovery} from './auto-discovery.mjs';
+import {swarmCommand} from './swarm.mjs';
 
 export const READ_TYPES=['observation','context_request','context_grant','handoff','project_stage','attachment','skill_version','tool_use','shared_record','project_slot','profile','settings','onboarding','task','run','attempt','approval','document','knowledge','memory','outcome','feed','interaction','inbox','notification','friend','conversation','message','draft','assist','commitment','project','post','comment','claim','copy','contribution','release','feedback','resource','connector','data_request','brief','skill','shortcut','trace','candidate','evaluation','method','rollout'];
 export class Service {
@@ -78,7 +79,7 @@ export class Service {
     const s=this.store;
     return s.command(user,key,{action,input},()=>{
       if(input.evaluation_candidate_id) fail('INTERNAL_ONLY','候选方法仅能通过离线评估入口运行',403);
-      for(const handler of [agentChatCommand,observationCommand,externalToolCommand,feedCommand,reflectionCommand,semanticCommand,contextCommand,handoffCommand,projectWorkCommand,searchCommand,taskCommand,knowledgeCommand,socialCommand,communityCommand,improvementCommand,homeCommand,onboardingChoiceCommand,onboardingCommand,attachmentCommand,toolLibraryCommand,groupCommand]) {const result=handler(s,user,action,input);if(result) return result;}
+      for(const handler of [swarmCommand,agentChatCommand,observationCommand,externalToolCommand,feedCommand,reflectionCommand,semanticCommand,contextCommand,handoffCommand,projectWorkCommand,searchCommand,taskCommand,knowledgeCommand,socialCommand,communityCommand,improvementCommand,homeCommand,onboardingChoiceCommand,onboardingCommand,attachmentCommand,toolLibraryCommand,groupCommand]) {const result=handler(s,user,action,input);if(result) return result;}
       const owned=(type)=>s.expect(s.owned(user,input.id,type),input.version);
       if(action==='onboarding.save' || action==='onboarding.complete') {
         const object=owned('onboarding');

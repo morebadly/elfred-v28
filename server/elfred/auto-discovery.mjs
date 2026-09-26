@@ -1,4 +1,5 @@
 import {observationCommand} from './observation.mjs';
+import {discoveryInterests} from './discovery-policy.mjs';
 
 export function discoveryGoal(summary){
   const selected=summary.filter(item=>item.certainty==='selected'&&['need','direction','criteria','format','cooperation','pace'].includes(item.question_id));
@@ -19,16 +20,28 @@ function feedUrl(summary){
   return url.href;
 }
 
-export function provisionInitialDiscovery(store,user,summary){
-  const goal=discoveryGoal(summary);if(!goal)return null;
+export function provisionInitialDiscovery(store,user,summary,{start=false}={}){
   const key=`${user}:onboarding-discovery`;
   const existing=store.db.prepare('SELECT object_id FROM unique_keys WHERE namespace=? AND key=?').get('observation',key);
+  const goal=discoveryGoal(summary);
+  if(!goal){const prior=existing&&store.get(existing.object_id);if(prior?.data.auto_suggested&&prior.data.status==='active')store.update(prior,{...prior.data,status:'paused'},user);return null;}
   if(!existing&&store.visible(user,'observation').filter(item=>['draft','active','paused','blocked'].includes(item.data.status)).length>=20)return null;
   const watch=store.unique('observation',key,()=>{
-    const created=observationCommand(store,user,'observation.create',{goal,source_url:feedUrl(summary),keywords:discoveryQuery(summary),system:'explore',interval_hours:24,max_checks:7,expires:new Date(Date.now()+14*86400000).toISOString()});
+    const created=observationCommand(store,user,'observation.create',{goal,source_url:feedUrl(summary),keywords:discoveryQuery(summary),system:'explore',interval_hours:24,max_checks:20,expires:new Date(Date.now()+30*86400000).toISOString()});
     return store.get(created.id);
   });
-  if(watch.data.status==='draft'&&(watch.data.goal!==goal||watch.data.source_url!==feedUrl(summary)))return store.update(watch,{...watch.data,goal,title:goal.slice(0,80),source_url:feedUrl(summary),keywords:[discoveryQuery(summary)],auto_suggested:true},user);
-  if(!watch.data.auto_suggested)return store.update(watch,{...watch.data,auto_suggested:true},user);
-  return watch;
+  // Migrate confirmed preferences on existing watches without overriding pause/stop decisions.
+  let current=watch;
+  if(['draft','active','paused','blocked'].includes(current.data.status)){
+   const preferences={goal,title:goal.slice(0,80),source_url:feedUrl(summary),source_urls:[feedUrl(summary),'https://sspai.com/feed','https://36kr.com/feed'],keywords:[discoveryQuery(summary)],interests:discoveryInterests(summary),auto_suggested:true};
+   if(Object.entries(preferences).some(([key,value])=>JSON.stringify(current.data[key])!==JSON.stringify(value)))current=store.update(current,{...current.data,...preferences},user);
+  }
+  if(start&&current.data.status==='draft'){
+   current=store.update(current,{...current.data,auto_managed:true,authorized_by:'onboarding.choice.confirm'},user);
+   observationCommand(store,user,'observation.start',{id:current.id,version:current.version,confirm:true});
+   current=store.get(current.id);
+   current=store.update(current,{...current.data,auto_managed:true,authorized_by:'onboarding.choice.confirm'},user);
+  }
+  else if(start&&current.data.status==='active'&&!current.data.auto_managed)current=store.update(current,{...current.data,auto_managed:true,authorized_by:'onboarding.choice.confirm'},user);
+  return current;
 }

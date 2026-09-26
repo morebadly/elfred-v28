@@ -998,7 +998,7 @@ export function BottomNav({
       </nav>
       <button
         type="button"
-        aria-label="打开 Elfred"
+        aria-label="打开蜂群协作"
         className="v277-elfred-orbit"
         onClick={openElfred}
       >
@@ -6344,7 +6344,7 @@ export function CommunityPage({
                 {originalPost&&<h3>{entityText(originalPost,'title')}</h3>}
                 <p>{post.text}</p>
               </button>
-              {originalPost&&<><RecruitmentSummary post={originalPost}/><FollowAuthor post={originalPost}/></>}
+              {originalPost&&<><RecruitmentSummary post={originalPost} onOpen={()=>go({name:"community-post",id:post.id})}/><FollowAuthor post={originalPost}/></>}
               {originalPost&&((originalPost.data.attachments||[]) as FileRef[]).some(file=>file.mime.startsWith('image/'))&&<button type="button" className="community-post-image-preview" onClick={()=>go({name:'community-post',id:post.id})} aria-label="查看动态图片"><img src={`/api/elfred/attachments/${((originalPost.data.attachments||[]) as FileRef[]).find(file=>file.mime.startsWith('image/'))?.id}`} alt="动态配图" loading="lazy"/></button>}
               {post.gallery && (
                 <button
