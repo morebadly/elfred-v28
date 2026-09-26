@@ -14,7 +14,10 @@ const API = process.env.PAGE2_API || "http://127.0.0.1:8000";
 // ⚠️ 不能用 new URL(...).pathname：仓库路径里有中文，它给的是百分号编码（%E5%86%85…），
 // 直接拿去 readFileSync 会 ENOENT。fileURLToPath 会正确解码（Windows 盘符也处理）。
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const API_FILE = path.resolve(HERE, "../../app/v28/features/knowledge/page2-api.ts");
+// ⚠️ 第二页的代码 2026-09-25 收进了一个模块（pages24），路径跟着搬过：
+//    app/v28/features/knowledge/page2-api.ts → app/v28/features/pages24/api/page2-api.ts
+//    老路径写死过一次，重构之后就 ENOENT 了 —— 改路径时记得连这里一起改。
+const API_FILE = path.resolve(HERE, "../../app/v28/features/pages24/api/page2-api.ts");
 
 // 前端声明的类型 → 对应要打的后端接口
 const MAP = [

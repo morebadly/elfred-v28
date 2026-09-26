@@ -135,21 +135,18 @@ await page.getByText("编辑资料", { exact: false }).first().click({ timeout: 
 await page.waitForTimeout(2000);
 if (/编辑资料/.test(await page.evaluate(() => document.body.innerText))) {
   await page.screenshot({ path: `${OUT}/02-profile-edit.png`, fullPage: true });
-  const p = await probe([".v279-profile-cover", ".v279-owner-avatar"]);
+  // ⚠️ 编辑资料 2026-09-26 换成我们自己的那份：封面/头像不再是 `.v279-profile-cover` /
+  //    `.v279-owner-avatar`（那两个是公共组件的类名），字段也不再是常驻输入框
+  //    （改成"点开弹层单独编辑"）。
+  const p = await probe(["button[aria-label='更换封面']", "button[aria-label='更换头像']"]);
   for (const [sel, v] of Object.entries(p)) {
     say("编辑资料", sel, v ? judge(v.bgImage) + " " + v.bgImage.slice(0, 70) : "（元素不存在）");
   }
-  const inputs = await page.evaluate(() =>
+  // 字段现在是"行"，点开才是输入框 —— 这里只如实打印"有没有常驻输入框"（有反而是错的）
+  const visibleInputs = await page.evaluate(() =>
     Array.from(document.querySelectorAll("input, textarea"))
-      .filter((el) => el.offsetParent !== null && el.type !== "file")
-      .map((el) => ({
-        ph: el.getAttribute("placeholder") || "",
-        value: el.value,
-      })),
-  );
-  for (const f of inputs) {
-    say("编辑资料", `输入框 ph="${f.ph}"`, `值="${f.value}" ${judge(f.value)}`);
-  }
+      .filter((el) => el.offsetParent !== null && el.type !== "file").length);
+  say("编辑资料", "常驻输入框", `${visibleInputs} 个（现在的做法是点字段才展开输入）`);
   const editText = await page.evaluate(() => document.body.innerText);
   say("编辑资料", "正文", editText.replace(/\n+/g, " | ").slice(0, 300));
   await page.locator('button[aria-label="返回"], .v277-icon-button').first().click().catch(() => {});
@@ -165,27 +162,36 @@ await page.locator('button[aria-label="个人设置"]').first().click({ timeout:
 await page.waitForTimeout(1800);
 if (/设置/.test(await page.evaluate(() => document.body.innerText))) {
   await page.screenshot({ path: `${OUT}/03-settings.png`, fullPage: true });
-  const p = await probe([".v279-settings-profile .v279-owner-avatar"]);
+  // ⚠️ 设置页 2026-09-26 换成我们自己的那份（分组 + 本人卡片），老选择器 `.v279-settings-profile` 已经不在页面里
+  const p = await probe(["main button[class*=me] > span:first-child"]);
   for (const [sel, v] of Object.entries(p)) {
     say("设置", sel, v ? judge(v.bgImage) + " " + v.bgImage.slice(0, 70) : "（元素不存在）");
   }
   const t = await page.evaluate(() => document.body.innerText);
   say("设置", "正文", t.replace(/\n+/g, " | ").slice(0, 320));
-  // 设置里那一格点开的面板：原来写死 86% / Lv.4，新用户点进来也是这俩数
+  // 设置里「理解度」那一行点开的面板：原来写死 86% / Lv.4 —— 现在走我们自己的「理解与成长」弹层
   await page
-    .locator("button")
-    .filter({ hasText: /Elfred 对我的理解/ })
+    .locator("main button[class*=row]")
+    .filter({ hasText: /理解度/ })
     .first()
     .click({ timeout: 6000 })
     .catch(() => {});
   await page.waitForTimeout(1400);
   await page.screenshot({ path: `${OUT}/06-settings-understanding.png`, fullPage: true });
-  const panel = await page.evaluate(
-    () => document.querySelector(".v279-setting-summary")?.innerText.replace(/\n+/g, " | ") || "",
-  );
+  // 弹层的类名换过好几轮（`.v279-setting-summary` → 同事的 ConnectedSettings → 我们自己的
+  // 「理解与成长」弹层），所以这里按"能读到内容的那个 sheet"兜底，别再写死一个选择器（踩过两次）。
+  const panel = await page.evaluate(() => {
+    const pick = (selector) =>
+      document.querySelector(selector)?.innerText.replace(/\n+/g, " | ") || "";
+    return (
+      pick('[class*="sheet"]:not([class*="Backdrop"])') ||
+      pick(".v279-setting-summary") ||
+      pick(".v279-setting-sheet")
+    );
+  });
   say(
     "设置 · 理解度面板",
-    "点开「Elfred 对我的理解」",
+    "点开「理解度」",
     panel
       ? `${/86%/.test(panel) ? "❌ 还是写死的 86%" : "✅ 不是写死的 86%"}  「${panel.slice(0, 120)}」`
       : "❌ 面板没打开",

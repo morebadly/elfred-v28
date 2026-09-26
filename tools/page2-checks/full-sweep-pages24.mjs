@@ -131,7 +131,7 @@ await back();
 
 // ── 第四页 ────────────────────────────────────────────────
 await nav("我的");
-await capture("p4-我的-动态");
+await capture("p4-我的-agent动态");
 await page.locator("nav.v277-profile-tabs button").filter({ hasText: "能力" }).first().click().catch(() => {});
 await capture("p4-我的-能力");
 await page.locator('[class*="cardList"] li button').first().click({ timeout: 6000 }).catch(() => {});

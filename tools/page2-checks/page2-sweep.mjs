@@ -112,7 +112,8 @@ await page.locator('nav button[aria-label="我的"]').first().click().catch(() =
 await page.waitForTimeout(2200);
 await page.screenshot({ path: `${OUT}/04-profile.png`, fullPage: true });
 console.log(`· ${head(await text(), 200)}`);
-for (const tab of ["动态", "能力", "勋章"]) {
+// 最左边那栏 2026-09-26 从「动态」改成「Agent 动态」（内容是朋友圈那份的总览）
+for (const tab of ["Agent 动态", "能力", "勋章"]) {
   const locator = page.getByRole("button", { name: tab, exact: true });
   await probe(`我的页标签「${tab}」`, locator);
 }

@@ -1,4 +1,7 @@
-// 第四页三个标签（动态 / 能力 / 勋章）在"后端什么都没有"时的表现。
+// 第四页三个标签（Agent 动态 / 能力 / 勋章）在"后端什么都没有"时的表现。
+// ⚠️ 最左边那栏 2026-09-26 从「动态」改成「Agent 动态」：内容换成**朋友圈**那份的总览
+//    （数据在 runtime 里，不是我们后端那个 /page2/feed），所以下面是空态还是真动态
+//    取决于同事那份数据 —— 它只打印，不做断言。
 //
 // 为什么用拦截而不是直接打 8001：8001 的 profile 是空的，但它的 feed 还挂着运行记录，
 // 没法把"动态也空"这条路径逼出来。这里把三个接口都拦成空，才是真正"什么都没设置"。
@@ -104,7 +107,7 @@ const hero = await page.evaluate(
 );
 rows.push(["我的 · 英雄区", hero.slice(0, 200)]);
 
-await readTab("动态", "01-tab-feed.png");
+await readTab("Agent 动态", "01-tab-agent-feed.png");
 await readTab("能力", "02-tab-ability.png");
 await readTab("勋章", "03-tab-honors.png");
 
@@ -119,8 +122,9 @@ rows.push([
   (await page.evaluate(() => document.body.innerText)).replace(/\n+/g, " | ").slice(0, 220),
 ]);
 await page
-  .locator("button")
-  .filter({ hasText: /Elfred 对我的理解/ })
+  // 设置页 2026-09-26 换成我们自己的分组列表：这一行现在叫「理解度」，点开是「理解与成长」弹层
+  .locator("main button[class*=row]")
+  .filter({ hasText: /理解度/ })
   .first()
   .click({ timeout: 6000 })
   .catch(() => {});
@@ -130,7 +134,12 @@ rows.push([
   "设置 · 理解度面板",
   (
     await page.evaluate(
-      () => document.querySelector(".v279-setting-summary")?.innerText.replace(/\n+/g, " | ") || "(没打开)",
+      () =>
+        // 弹层类名换过几轮（.v279-setting-summary → 同事的 ConnectedSettings → 我们自己的
+        // 「理解与成长」弹层），这里按"能读到内容的那个 sheet"兜底，别再写死一个选择器
+        document.querySelector('[class*="sheet"]:not([class*="Backdrop"])')?.innerText.replace(/\n+/g, " | ") ||
+        document.querySelector(".v279-setting-sheet")?.innerText.replace(/\n+/g, " | ") ||
+        "(没打开)",
     )
   ).slice(0, 200),
 ]);
@@ -140,7 +149,7 @@ await page.locator('button[aria-label="返回"]').first().click({ timeout: 6000 
 await page.waitForTimeout(1400);
 
 // 勋章卡 → 荣誉勋章页（后端说三枚都没解锁时的样子）
-// 从设置回来这一页会重新挂载，页签回到"动态"，所以得先切回"勋章"再点卡
+// 从设置回来这一页会重新挂载，页签回到"Agent 动态"，所以得先切回"勋章"再点卡
 await page
   .locator("nav.v277-profile-tabs button")
   .filter({ hasText: "勋章" })

@@ -2489,7 +2489,10 @@
   font-size: 8px;
 }
 
-/* Profile remains inside the 402px safe area; all hit targets are explicit. */
+/* 第四页（我的）版式。⚠️ 2026-09-26 改过：
+   原来 hero 是 385px 写死 + 三个 `opacity:0.001` 的隐形热区（照 402×867 的贴图量的）；
+   现在身份区是**真元素、内容撑开高度**，隐形热区那三个类（share-hit / settings-hit / edit-hit）
+   已经不在页面里了，所以它们的透明度规则一并删掉，免得以后误伤同名类。 */
 .v277-profile-page {
   width: 100% !important;
   max-width: 100% !important;
@@ -2503,18 +2506,10 @@
 .v277-profile-hero {
   width: 100% !important;
   max-width: 100% !important;
-  height: 385px !important;
-  flex: 0 0 385px !important;
-  background-position: center top !important;
-  background-size: 402px 867px !important;
-  overflow: hidden !important;
-}
-.v277-profile-hero .share-hit,
-.v277-profile-hero .settings-hit,
-.v277-profile-hero .edit-hit {
-  z-index: 5;
-  opacity: 0.001 !important;
-  pointer-events: auto !important;
+  height: auto !important;
+  flex: 0 0 auto !important;
+  background: none !important;
+  overflow: visible !important;
 }
 .v277-profile-body {
   width: 100% !important;

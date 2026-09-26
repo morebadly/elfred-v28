@@ -1961,3 +1961,14 @@
   color: #7d8899 !important;
   opacity: 0.9 !important;
 }
+
+/* 雷达上那句"起点来自测试 / 哪几维已经动过"的说明。
+   口径（用户定过）：起点就是这条曲线的一部分，不另画"不算分"的虚线。
+   （右边原来挂过一个「做完事会变，久了也会回落」的角标 —— 用户说多余，连样式一起删了。） */
+.radarNote {
+  display: flex;
+  align-items: center;
+  margin: 2px 0 6px;
+  font-size: 11px;
+  color: #7b848a;
+}
