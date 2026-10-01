@@ -22,6 +22,7 @@ import {taskMemoryFeedback} from './memory-feedback.mjs';
 import {recordCorrectionCandidate} from './improvement-correction.mjs';
 import {memoryApplies} from './memory-allocation.mjs';
 import {memoryUsable,projectMemory} from './memory-validity.mjs';
+import {suggestRepeatedSkill} from './repeated-skill.mjs';
 
 export function taskCommand(store,user,action,input) {
   if(action==='task.archive'||action==='task.restore') {
@@ -135,7 +136,8 @@ export function taskCommand(store,user,action,input) {
     const outcome=store.add('outcome',user,{task_id:task.id,access_space:task.data.access_space,run_id:run.id,verdict:'accepted',reviewer_id:user,criteria:task.data.criteria,source_refs:run.data.source_refs,receipt_hashes:run.data.receipts.map(receipt=>receipt.output_hash)});
     if (run.data.status==='awaiting_review') store.update(run,{...run.data,status:'completed',verification:{...run.data.verification,verdict:'satisfied',decision:'accept',method:'human_review',reviewer_id:user,outcome_id:outcome.id}},user);
     const artifact=store.add('knowledge',user,{title:task.data.title,access_space:task.data.access_space,content:resultReceipts(run.data.receipts).map(receipt=>typeof receipt.output==='string'?receipt.output:receipt.output.map(hit=>hit.title+'\n'+hit.excerpt+'\n定位：'+hit.anchor).join('\n\n')).join('\n\n'),attachments:run.data.receipts.filter(r=>r.attachment_id).map(r=>{const file=store.read(user,r.attachment_id,'attachment');return {id:file.id,name:file.data.name,mime:file.data.mime,size:file.data.size}}),kind:'accepted_result',task_id:task.id,run_id:run.id,outcome_id:outcome.id,source_refs:run.data.source_refs,status:'active'});
-    store.update(task,{...task.data,status:'completed',outcome_id:outcome.id,artifact_id:artifact.id,satisfaction:enumeration(input.satisfaction||'unknown',['unknown','satisfied','unsatisfied'],'满意度')},user);
+    const completed=store.update(task,{...task.data,status:'completed',outcome_id:outcome.id,artifact_id:artifact.id,satisfaction:enumeration(input.satisfaction||'unknown',['unknown','satisfied','unsatisfied'],'满意度')},user);
+    suggestRepeatedSkill(store,user,completed);
     const publish=store.visible(user,'settings')[0]?.data.agent_publish?.[task.data.system];
     const summary=publish?.length==='详细说明'?artifact.data.content.slice(0,1000):publish?.length==='标准摘要'?artifact.data.content.slice(0,300):'你已验收本次成果，可查看原结果和来源。';
     if(task.data.feed_event_id){const feed=store.read(user,task.data.feed_event_id,'feed');store.unique('feedback','feed-response:'+task.id,()=>store.add('feedback',user,{feed_id:feed.id,kind:'agent_response',system:task.data.system,content:artifact.data.content,reply_to:task.data.feed_comment_id||null,run_id:run.id,task_id:task.id,source_refs:[{id:artifact.id,version:artifact.version}],status:'reviewed'}));}

@@ -164,9 +164,12 @@ export function communityCommand(store,user,action,input) {
     let status={accept:'accepted',reject:'rejected',changes:'changes_requested'}[decision];
     const merged=mergeFiles(contribution.data.base_files||{},project.data.files||{},contribution.data.files||{});
     if(decision==='accept' && contribution.data.base_revision!==project.data.revision&&merged.conflicts.length) status='conflicted';
-    if(status==='accepted') store.update(project,{...project.data,revision:project.data.revision+1,content:contribution.data.content,format:contribution.data.format||'text',files:merged.files,accepted_contributions:[...(project.data.accepted_contributions||[]),contribution.id],accepted_contribution:contribution.id},user);
+    if(status==='accepted') {
+      const primary=contribution.data.format==='web'?'index.html':'成果.md';
+      store.update(project,{...project.data,revision:project.data.revision+1,content:merged.files[primary]??contribution.data.content,format:contribution.data.format||'text',files:merged.files,accepted_contributions:[...(project.data.accepted_contributions||[]),contribution.id],accepted_contribution:contribution.id},user);
+    }
     if(status==='accepted'&&contribution.data.slot_id){const slot=store.get(contribution.data.slot_id);if(slot)store.update(slot,{...slot.data,status:'completed'},user);}
-    return {id:store.update(contribution,{...contribution.data,status,conflict_files:merged.conflicts,feedback:string(input.feedback||'已审核','反馈',2000),reviewer:user},user).id};
+    return {id:store.update(contribution,{...contribution.data,status,conflict_files:merged.conflicts,feedback:string(input.feedback||'已审核','反馈',2000),reviewer:user,reviewed_at:now()},user).id};
   }
   if(action==='project.feedback') {
     const project=member(input.id);
@@ -179,7 +182,7 @@ export function communityCommand(store,user,action,input) {
     if(input.confirm!==true || !project.data.accepted_contribution) fail('REVIEW_REQUIRED','需已有采纳成果并由本人确认发布');
     if(input.execute===true&&project.data.format!=='web') fail('SANDBOX_UNAVAILABLE','当前环境仅支持静态文本成果，未开放用户代码执行',503);
     const build=project.data.format==='web'?validateWebArtifact(project.data.content,project.data.files||{}):null;
-    const release=store.unique('release',`${project.id}:${project.data.revision}`,()=>store.add('release',user,{title:project.data.title,purpose:project.data.goal,author_name:store.user(user).name,tool_description:string(input.tool_description||'真人审核并发布；未另附工具说明','工具说明',1000),content:project.data.content,files:project.data.files||{},origin_release:project.data.origin_release||null,contributors:(project.data.accepted_contributions||[project.data.accepted_contribution]).map(id=>{const c=store.get(id);return {contribution_id:id,user_id:c.owner,name:store.user(c.owner).name}}),revision:project.data.revision,project_id:project.id,contribution_id:project.data.accepted_contribution,content_hash:hash(project.data.content),status:'published',author_type:'human',published_by:user,format:project.data.format||'text',build,preview:build?'sandboxed-web':'escaped-text-only',license:input.allow_fork===true?'copy-with-attribution':'view-only'},{visibility:'public'}));
+    const release=store.unique('release',`${project.id}:${project.data.revision}`,()=>store.add('release',user,{title:project.data.title,purpose:project.data.goal,author_name:store.user(user).name,tool_description:string(input.tool_description||'真人审核并发布；未另附工具说明','工具说明',1000),content:project.data.content,files:project.data.files||{},origin_release:project.data.origin_release||null,contributors:(project.data.accepted_contributions||[project.data.accepted_contribution]).map(id=>{const c=store.get(id);return {contribution_id:id,user_id:c.owner,name:store.user(c.owner).name,submitted_at:c.created,accepted_at:c.data.reviewed_at||c.updated,reviewer_name:store.user(c.data.reviewer||user).name,content_hash:c.data.content_hash}}),revision:project.data.revision,project_id:project.id,contribution_id:project.data.accepted_contribution,content_hash:hash(project.data.content),status:'published',author_type:'human',published_by:user,format:project.data.format||'text',build,preview:build?'sandboxed-web':'escaped-text-only',license:input.allow_fork===true?'copy-with-attribution':'view-only'},{visibility:'public'}));
     store.update(project,{...project.data,release_id:release.id},user);for(const post of store.list('post').filter(x=>x.data.project_id===project.id))store.update(post,{...post.data,release_id:release.id},user);return {id:release.id};
   }
   if(action==='project.rollback') {
