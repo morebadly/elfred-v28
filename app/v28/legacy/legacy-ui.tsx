@@ -1153,7 +1153,7 @@ export function TaskPlayer({
   const queueCount = state.tasks.filter(
     (task) => task.status === "待确认" || task.status === "已暂停",
   ).length;
-  if (!current || (runtime && current.status !== "进行中")) return null;
+  if (!current) return null;
   return (
     <aside
       className={`v277-task-player${collapsed ? " is-collapsed" : ""}${dropActive ? " is-drop-target" : ""}`}
