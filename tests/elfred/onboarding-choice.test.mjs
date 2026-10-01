@@ -7,6 +7,7 @@ import {ModelProvider} from '../../server/elfred/providers.mjs';
 import {Runtime} from '../../server/elfred/runtime.mjs';
 import {alignmentQuestions,alignmentSummary,interestOptions} from '../../app/v28/core/onboarding-choice.mjs';
 import {discoveryInterests} from '../../server/elfred/discovery-policy.mjs';
+import {tickRssObservations} from '../../server/elfred/observation.mjs';
 function setup(t){const store=new Store(':memory:'),service=new Service(store,new ModelProvider({}));t.after(()=>store.close());const users=['alice','bob'].map(h=>authenticate(store,h,'local-test-password',true,h).user);users.forEach(u=>service.initialize(u));const cmd=(u,a,input)=>service.command(u.id,id(),a,input),session=u=>service.list(u.id,'onboarding')[0],ref=o=>({id:o.id,version:store.get(o.id).version});return {store,service,users,cmd,session,ref};}
 function chooseAll(env,user,mode='sequential'){const {cmd,session,ref}=env;cmd(user,'onboarding.choice.start',{...ref(session(user)),mode});for(const q of alignmentQuestions)cmd(user,'onboarding.choice.answer',{...ref(session(user)),question_id:q.id,option:q.options[0].id,...(q.id==='interests'?{detail:'AI 产品、摄影'}:{})});}
 
@@ -20,7 +21,8 @@ test('V2 onboarding saves a real goal, five focus areas and starts the first tas
  assert.equal(session(a).data.choice_phase,'handoff');
  assert.equal(store.visible(a.id,'profile')[0].data.name,'小林');
  assert.equal(store.visible(a.id,'settings')[0].data.agents.create.focus,focus.create);
- assert.equal(store.visible(a.id,'observation').length,1);
+ assert.equal(store.visible(a.id,'observation').length,5);
+ assert.deepEqual(new Set(store.visible(a.id,'observation').map(item=>item.data.system)),new Set(['explore','advise','create','connect','execute']));
  assert.throws(()=>cmd(a,'onboarding.choice.home',ref(session(a))),{code:'FIRST_TASK_REQUIRED'});
  const result=cmd(a,'onboarding.choice.first',{...ref(session(a)),task:'outline',confirm:true,start:true,model_consent:true});
  assert.equal(store.get(result.task_id).data.status,'queued');
@@ -28,6 +30,21 @@ test('V2 onboarding saves a real goal, five focus areas and starts the first tas
  assert.equal(cmd(a,'onboarding.choice.first',{...ref(session(a)),task:'compare',confirm:true,start:true,model_consent:true}).task_id,result.task_id);
  cmd(a,'onboarding.choice.home',ref(session(a)));
  assert.equal(session(a).data.status,'completed');
+});
+
+test('五个 Agent 按本人确认的方向各自读取真实 RSS 条目，不复制同一假动态',async t=>{
+ const {users:[a],cmd,session,ref,store,service}=setup(t);
+ cmd(a,'onboarding.choice.profile.start',ref(session(a)));
+ cmd(a,'onboarding.choice.profile',{...ref(session(a)),name:'小林',role:'产品',status:'创业中',interests:['AI 产品']});
+ cmd(a,'onboarding.choice.goal',{...ref(session(a)),goal:'研究 AI 产品',result:'方向清单',criteria:'有原文链接',days:14});
+ const focus={explore:'AI 产品资讯',advise:'产品判断',create:'产品创作',connect:'产品合作',execute:'产品执行'};
+ cmd(a,'onboarding.choice.team',{...ref(session(a)),focus,auto_discovery:true,confirm:true});
+ const reader=async url=>[{id:url,title:'AI 产品资讯、产品判断、产品创作、产品合作、产品执行',summary:'公开来源',url:`https://example.org/source/${encodeURIComponent(new URL(url).searchParams.get('q')||new URL(url).hostname)}`,published_at:new Date().toISOString()}];
+ for(let i=0;i<5;i++)await tickRssObservations(store,reader);
+ const feeds=service.list(a.id,'feed');
+ assert.deepEqual(new Set(feeds.map(item=>item.data.system)),new Set(['explore','advise','create','connect','execute']));
+ assert.ok(feeds.every(item=>item.data.external_url?.startsWith('https://example.org/source/')));
+ assert.equal(new Set(feeds.map(item=>item.data.external_url)).size,feeds.length);
 });
 
 test('V2 goal organizer only runs with consent and stays inside onboarding',t=>{

@@ -137,7 +137,7 @@ export function PrivateFeed({ go, onDrag, preview = false }: { go: (screen: Scre
           <div className={styles.postLayout}>
             <span className={styles.avatar} aria-hidden="true">{Icon && <Icon size={27} strokeWidth={1.7} />}</span>
             <div className={styles.postMain}>
-              <header className={styles.postHeader}><b>{agent?.name || "系统"} <span>Agent</span></b></header>
+              <header className={styles.postHeader}><b>{item.data.purpose==='community'?`${text(item,'source_name')||'关注的作者'} · 社区`:<>{agent?.name || "系统"} <span>Agent</span></>}</b></header>
               <button type="button" className={styles.postContent} onClick={() => setDetailsId(detailsId === item.id ? null : item.id)}>
                 <strong>{displayTitle(text(item, "title"),'')}</strong>
                 {item.data.synthetic===true&&<small role="status">隔离验收数据 · 不是真实 Agent 发现</small>}

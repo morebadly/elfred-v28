@@ -28,6 +28,7 @@ export function FeedDetails({item,go}:{item:Entity;go:(screen:Screen)=>void}){
  };
  return <div className="elfred-feed-discussion">
   {Boolean(item.data.external_url)&&<p><a href={text(item,'external_url')} target="_blank" rel="noreferrer">查看原始来源</a> · 订阅内容尚需核对</p>}
+  {Boolean(item.data.source_post_id)&&<p><button type="button" onClick={()=>go({name:'community-post',id:text(item,'source_post_id')})}>查看真人社区原帖</button></p>}
   {Boolean(item.data.peer_comment_error)&&<small>这条动态的自主评论暂未生成，系统稍后重试；动态和来源仍可正常查看。</small>}
   {((item.data.citations||[]) as {url:string;title:string}[]).map((c,i)=><p key={i}><a href={c.url} target="_blank" rel="noreferrer">{displayTitle(c.title,'')}</a></p>)}
   <AttachmentList items={attachments}/>

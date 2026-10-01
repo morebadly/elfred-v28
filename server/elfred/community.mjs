@@ -20,6 +20,19 @@ function ensureParticipantCopy(store,user,project,slot){
   store.add('copy',user,{project_id:project.id,slot_id:slot?.id||null,format:project.data.format||'text',access_space:project.id,base_revision:project.data.revision,content:project.data.content,files:project.data.files||{},base_files:project.data.files||{},rules_snapshot:slot?.data||{criteria:project.data.criteria},status:'draft'});
 }
 
+function publishToFollowers(store,post){
+ if(post.visibility!=='public'||!['published','recruiting'].includes(post.data.status))return;
+ const author=store.user(post.owner),followers=store.list('interaction').filter(item=>item.data.kind==='follow_author'&&item.data.object_id===post.owner&&item.data.active&&item.owner!==post.owner);
+ for(const follow of followers){
+  if(store.visible(follow.owner,'settings')[0]?.data.agents?.connect?.enabled===false)continue;
+  const title=post.type==='release'?`${author.name}发布了作品：${post.data.title}`:post.data.kind==='cocreation'?`${author.name}发起共创：${post.data.title}`:`${author.name}分享：${post.data.title}`;
+  const data={title:title.slice(0,200),summary:String(post.data.content||post.data.purpose||'查看原帖和来源').slice(0,500),system:'connect',topic:post.type==='release'?'作品':post.data.kind==='cocreation'?'共创':'关注的人',status:'active',purpose:'community',event_key:`community:${post.id}`,source_post_id:post.id,source_name:author.name,source_refs:[{id:post.id,version:post.version}],reason:'你主动关注了这位真人作者；内容来自其公开发布的原帖',personal_value:'关注的人发布了新内容',uncertainty:'原帖内容由真人发布，Elfred 尚未核实其中的事实',comments:[],attachments:[]};
+  const existing=store.list('feed').find(item=>item.owner===follow.owner&&item.data.event_key===data.event_key);
+  if(existing)store.update(existing,{...existing.data,...data},follow.owner);
+  else store.add('feed',follow.owner,data);
+ }
+}
+
 export function communityCommand(store,user,action,input) {
   if(/^(post|project|claim|copy|contribution)\./.test(action)&&(!store.user(user)||input.actor_type==='agent'||input.auto_publish===true))fail('HUMAN_REQUIRED','社区内容只能由登录用户主动发布',403);
   const slotResult=slotCommand(store,user,action,input);if(slotResult)return slotResult;
@@ -33,7 +46,9 @@ export function communityCommand(store,user,action,input) {
     if(existing?.data.project_id) fail('INVALID_INPUT','共创招募请从项目管理更新');
     if(input.confirm!==true) fail('CONFIRMATION_REQUIRED','请确认将正文公开到社区');
     const data={title:string(input.title,'标题',200),content:string(input.content,'正文',12000),author_name:store.user(user).name,kind:'discussion',author_type:'human',published_by:user,attachments:attachmentRefs(store,user,input.attachment_ids??existing?.data.attachments?.map(item=>item.id)??[]),status:'published'};
-    return {id:existing?store.update(existing,{...existing.data,...data},user).id:store.add('post',user,data,{visibility:'public'}).id};
+    const published=existing?store.update(existing,{...existing.data,...data},user):store.add('post',user,data,{visibility:'public'});
+    publishToFollowers(store,published);
+    return {id:published.id};
   }
   if(action==='post.withdraw') {
     const post=store.expect(store.owned(user,input.id,'post'),input.version);
@@ -85,7 +100,9 @@ export function communityCommand(store,user,action,input) {
     const recruiting=existing?project.data.recruiting:true;
     const data={kind:'cocreation',author_type:'human',published_by:user,slots:publicSlots(store,project.id),title:project.data.title,author_name:store.user(user).name,content:project.data.goal,basis:project.data.basis,public_scope:project.data.public_scope,reviewer_name:store.user(project.owner).name,fee_terms:project.data.fee_terms,time_commitment:project.data.time_commitment,deadline_mode:project.data.deadline_mode,deadline:project.data.deadline,criteria:project.data.criteria,task:project.data.task,project_id:project.id,status:recruiting?'recruiting':'closed',participation:project.data.participation};
     if(!existing)store.update(project,{...project.data,recruiting:true},user);
-    return {id:existing?store.update(existing,data,user).id:store.add('post',user,data,{visibility:'public'}).id};
+    const published=existing?store.update(existing,data,user):store.add('post',user,data,{visibility:'public'});
+    publishToFollowers(store,published);
+    return {id:published.id};
   }
   if(action==='project.claim') {
     const post=store.read(user,input.post_id,'post'),project=store.get(post.data.project_id);
@@ -183,7 +200,7 @@ export function communityCommand(store,user,action,input) {
     if(input.execute===true&&project.data.format!=='web') fail('SANDBOX_UNAVAILABLE','当前环境仅支持静态文本成果，未开放用户代码执行',503);
     const build=project.data.format==='web'?validateWebArtifact(project.data.content,project.data.files||{}):null;
     const release=store.unique('release',`${project.id}:${project.data.revision}`,()=>store.add('release',user,{title:project.data.title,purpose:project.data.goal,author_name:store.user(user).name,tool_description:string(input.tool_description||'真人审核并发布；未另附工具说明','工具说明',1000),content:project.data.content,files:project.data.files||{},origin_release:project.data.origin_release||null,contributors:(project.data.accepted_contributions||[project.data.accepted_contribution]).map(id=>{const c=store.get(id);return {contribution_id:id,user_id:c.owner,name:store.user(c.owner).name,submitted_at:c.created,accepted_at:c.data.reviewed_at||c.updated,reviewer_name:store.user(c.data.reviewer||user).name,content_hash:c.data.content_hash}}),revision:project.data.revision,project_id:project.id,contribution_id:project.data.accepted_contribution,content_hash:hash(project.data.content),status:'published',author_type:'human',published_by:user,format:project.data.format||'text',build,preview:build?'sandboxed-web':'escaped-text-only',license:input.allow_fork===true?'copy-with-attribution':'view-only'},{visibility:'public'}));
-    store.update(project,{...project.data,release_id:release.id},user);for(const post of store.list('post').filter(x=>x.data.project_id===project.id))store.update(post,{...post.data,release_id:release.id},user);return {id:release.id};
+    store.update(project,{...project.data,release_id:release.id},user);for(const post of store.list('post').filter(x=>x.data.project_id===project.id))store.update(post,{...post.data,release_id:release.id},user);publishToFollowers(store,release);return {id:release.id};
   }
   if(action==='project.rollback') {
     const project=store.expect(store.owned(user,input.id,'project'),input.version),release=store.read(user,input.release_id,'release');

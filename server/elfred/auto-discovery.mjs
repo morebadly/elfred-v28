@@ -21,6 +21,29 @@ function feedUrl(summary){
   return url.href;
 }
 
+function provisionFocusedAgents(store,user,summary,start){
+ const focuses=summary.filter(item=>item.certainty==='selected'&&/^focus_(advise|create|connect|execute)$/.test(item.question_id));
+ for(const item of focuses){
+  const system=item.agent,focus=String(item.label||'').trim();
+  if(!focus||store.visible(user,'observation').filter(w=>['draft','active','paused','blocked'].includes(w.data.status)).length>=20)continue;
+  const key=`${user}:onboarding-discovery:${system}`;
+  const url=new URL('https://news.google.com/rss/search');url.searchParams.set('q',focus.slice(0,80));url.searchParams.set('hl','zh-CN');url.searchParams.set('gl','CN');url.searchParams.set('ceid','CN:zh-Hans');
+  const sourceUrl=url.href,goal=`根据本人为${system} Agent 选择的方向，寻找可核对的近期公开资讯：${focus}。只发布真实来源，不补造内容。`;
+  let watch=store.unique('observation',key,()=>store.get(observationCommand(store,user,'observation.create',{goal,source_url:sourceUrl,keywords:focus.slice(0,50),system,interval_hours:24,max_checks:20,expires:new Date(Date.now()+30*86400000).toISOString()}).id));
+  if(['draft','active','paused','blocked'].includes(watch.data.status)){
+   const interests=[...new Set([...focus.split(/[\s，、,；;。]+/).filter(word=>word.length>=2&&word.length<=30),...discoveryInterests(summary)])].slice(0,12);
+   const preferences={goal,title:goal.slice(0,80),source_url:sourceUrl,source_urls:[sourceUrl],keywords:[focus.slice(0,50)],interests,auto_suggested:true,focused_agent:true};
+   if(Object.entries(preferences).some(([key,value])=>JSON.stringify(watch.data[key])!==JSON.stringify(value)))watch=store.update(watch,{...watch.data,...preferences},user);
+  }
+  if(start&&watch.data.status==='draft'){
+   watch=store.update(watch,{...watch.data,auto_managed:true,authorized_by:'onboarding.choice.team'},user);
+   observationCommand(store,user,'observation.start',{id:watch.id,version:watch.version,confirm:true});
+   watch=store.get(watch.id);
+   store.update(watch,{...watch.data,auto_managed:true,authorized_by:'onboarding.choice.team'},user);
+  }
+ }
+}
+
 export function provisionInitialDiscovery(store,user,summary,{start=false}={}){
   const key=`${user}:onboarding-discovery`;
   const existing=store.db.prepare('SELECT object_id FROM unique_keys WHERE namespace=? AND key=?').get('observation',key);
@@ -44,5 +67,6 @@ export function provisionInitialDiscovery(store,user,summary,{start=false}={}){
    current=store.update(current,{...current.data,auto_managed:true,authorized_by:'onboarding.choice.confirm'},user);
   }
   else if(start&&current.data.status==='active'&&!current.data.auto_managed)current=store.update(current,{...current.data,auto_managed:true,authorized_by:'onboarding.choice.confirm'},user);
+  if(start)provisionFocusedAgents(store,user,summary,start);
   return current;
 }
