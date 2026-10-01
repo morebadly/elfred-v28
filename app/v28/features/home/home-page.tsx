@@ -250,12 +250,13 @@ export function HomePage({
           const system=id==='advisor'?'advise':id;
           const tasks=runtime?.snapshot?.objects.task.filter(task=>task.data.system===system&&!task.data.internal_search)||[];
           const status=tasks.some(task=>['awaiting_review','awaiting_acceptance'].includes(String(task.data.status)))?'等待确认':tasks.some(task=>['queued','running'].includes(String(task.data.status)))?'执行中':runtime?.snapshot?.objects.observation?.some(item=>item.data.system===system&&item.data.status==='active')?'关注中':'空闲';
-          const descriptions=['探索世界','看清自己','形成表达','连接关系','推动事情'];
+          const level=runtime?.snapshot?agentGrowth(runtime.snapshot,system).level:1;
           const openAgent=()=>{if(holdOpened.current){holdOpened.current=false;return;}try{localStorage.setItem(`elfred-agent-seen:${runtime?.snapshot?.user.id}:${system}`,new Date().toISOString())}catch{}setAgentUnread(current=>({...current,[system]:0}));go({name:'agent',id})};
           return (
             <button
               type="button"
               key={id}
+              aria-label={`${name} Agent，L${level}，${status}`}
               onClick={openAgent}
               onPointerDown={()=>{holdOpened.current=false;holdTimer.current=setTimeout(()=>{holdOpened.current=true;setAgentMenu(id)},550)}}
               onPointerUp={()=>{if(holdTimer.current)clearTimeout(holdTimer.current)}}
@@ -264,8 +265,7 @@ export function HomePage({
             >
               <span className="elfred-home-agent-icon"><Icon size={23} strokeWidth={1.8} />{Boolean(agentUnread[system])&&<i>{agentUnread[system]}</i>}</span>
               <b>{name}</b>
-              <small>{runtime?`L${agentGrowth(runtime.snapshot,system).level} · ${status}`:'L1 · 空闲'}</small>
-              <em>{descriptions[index]}</em>
+              <small><span>L{level}</span><span>{status}</span></small>
             </button>
           );
         })}

@@ -1,9 +1,11 @@
-.v277-home-page .v277-reference-agents{height:108px!important;position:relative}
-.v277-home-page .v277-reference-agents>button{gap:0!important;min-height:108px;touch-action:pan-y}
+.v277-home-page .v277-reference-agents{height:98px!important;gap:6px!important;position:relative}
+.v277-home-page .v277-reference-agents>button{gap:0!important;min-height:98px;padding:8px 2px!important;touch-action:pan-y}
 .v277-home-page .v277-reference-agents>button .elfred-home-agent-icon{position:relative;display:inline-flex;align-items:center;justify-content:center;height:24px;margin-bottom:5px}
 .v277-home-page .v277-reference-agents>button .elfred-home-agent-icon svg{margin-bottom:0!important}
 .elfred-home-agent-icon i{position:absolute;top:-7px;right:-11px;min-width:15px;height:15px;border-radius:9px;background:#141619;color:#fff;font:10px/15px sans-serif;text-align:center;font-style:normal}
-.v277-home-page .v277-reference-agents>button em{font-size:9px;line-height:13px;color:#8b929b;font-style:normal;white-space:nowrap}
+.v277-home-page .v277-reference-agents>button b{font-size:13px!important;line-height:18px!important;white-space:nowrap}
+.v277-home-page .v277-reference-agents>button small{display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:3px!important;color:#737c86;font-size:10px!important;line-height:13px!important;white-space:nowrap}
+.v277-home-page .v277-reference-agents>button small span:first-child{color:#3e505e;font-weight:650}
 .elfred-home-agent-menu{position:absolute;top:84px;left:8px;right:8px;z-index:12;display:grid;gap:5px;padding:14px;border:1px solid #e4e8eb;border-radius:18px;background:#fff;box-shadow:0 12px 32px #2222}
 .elfred-home-agent-menu>b{font-size:14px}
 .elfred-home-agent-menu>button{min-height:34px;text-align:left;border:0;background:#f5f7f8;border-radius:10px;padding:6px 10px}
