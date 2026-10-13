@@ -230,7 +230,7 @@ export class Runtime {
       this.permitted(run);
       s.transaction(()=>{run=s.update(run,{...run.data,status:'running',started_at:now()},run.owner);const task=s.get(run.data.task_id);s.update(task,{...task.data,status:'running'},run.owner);});
       // 每一步的执行体抽成函数：非协作步骤照旧逐个串行，互不依赖的协作步骤可以并发。
-      const runOne = async (step) => {
+      const runOne = async (step, parallelCount=1) => {
         run=s.get(run.id); this.fenced(job); this.permitted(run);
         if (run.data.status==='cancel_requested' || run.data.status==='pause_requested') { this.finish(job,run.data.status==='cancel_requested'?'cancelled':'paused');return; }
         if (run.data.checkpoint.includes(step.id)) return;
@@ -246,11 +246,14 @@ export class Runtime {
         if(s.visible(run.owner,'settings')[0]?.data.agents?.[stepSystem]?.enabled===false)fail('AGENT_DISABLED','参与系统已停用，请重新核对方案');
         if (task.data.calls>=stop.maxCalls || task.data.elapsed_ms>=stop.maxSeconds*1000 || task.data.tokens+(task.data.unknown_tokens_reserved||0)>=stop.maxTokens) fail('STOP_LIMIT','达到任务累计停止上限',409);
         if (step.tool==='text.compose' && !(['web_search','image_generate'].includes(task.data.media_operation)?this.provider.status()[task.data.media_operation]==='configured':task.data.media_operation==='embedding_search'?this.provider.status().embedding==='configured':task.data.media_operation==='jev'?this.provider.status().jev==='configured':this.provider.status().configured)) fail('PROVIDER_NOT_CONFIGURED',task.data.media_operation==='jev'?'Jev 尚未配置，请填写 TYPESAFE_API_KEY 后恢复任务':'模型服务尚未配置，请安全配置后恢复任务',503);
+        const maxOutputTokens=Math.floor((stop.maxTokens-task.data.tokens-(task.data.unknown_tokens_reserved||0))/parallelCount);
+        if(step.tool==='text.compose'&&maxOutputTokens<=0)fail('STOP_LIMIT','任务剩余令牌不足',409);
         let attempt;
         const units=step.tool==='text.compose'?1000:0;
         s.transaction(()=>{
           this.fenced(job);
           task=s.get(task.id);   // 并发跑协作步骤时按最新快照记账，避免 calls/units 各写各的
+          if(task.data.calls>=stop.maxCalls || task.data.elapsed_ms>=stop.maxSeconds*1000 || task.data.tokens+(task.data.unknown_tokens_reserved||0)>=stop.maxTokens) fail('STOP_LIMIT','达到任务累计停止上限',409);
           if (task.data.units+units>stop.maxUnits) fail('BUDGET_EXHAUSTED','任务预算不足',409);
           if(task.data.budget_source==='project'){
             const project=s.read(run.owner,task.data.project_id,'project'),budget=project.data.public_budget;
@@ -289,15 +292,15 @@ export class Runtime {
           else if (step.tool==='search.local') output=search(s,run.owner,{query:task.data.local_lookup||task.data.goal,excluded_ids:[task.id]}).hits;
           else if (step.tool==='context.read') output=sourceRefs(s,run.owner,run.data.source_refs,128).map(ref=>{const object=s.read(run.owner,ref.id);return String(object.data.content||object.data.text||object.data.instructions||object.data.summary||object.data.name||'').slice(0,12000)}).join('\n\n');
           else if (step.tool==='document.read') output=s.read(run.owner,step.ref.id,'document').data.content;
-          else if(['web_search','image_generate'].includes(task.data.media_operation)){providerResult=await this.provider[task.data.media_operation==='web_search'?'research':'image']({goal:task.data.goal,maxTokens:stop.maxTokens-task.data.tokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])});output=providerResult.output;}
+          else if(['web_search','image_generate'].includes(task.data.media_operation)){providerResult=await this.provider[task.data.media_operation==='web_search'?'research':'image']({goal:task.data.goal,maxTokens:maxOutputTokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])});output=providerResult.output;}
           else if(task.data.agent_chat&&step.phase!=='collaboration'){
-            providerResult=await this.provider.generate({...chatModelRequest(s,task.data,{...run.data,owner:run.owner},this.provider.status?.()),goal:run.data.goal,maxTokens:stop.maxTokens-task.data.tokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])});
+            providerResult=await this.provider.generate({...chatModelRequest(s,task.data,{...run.data,owner:run.owner},this.provider.status?.()),goal:run.data.goal,maxTokens:maxOutputTokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])});
             const learned=unpackLearningReply(providerResult.output);output=learned.reply;
             s.transaction(()=>{this.fenced(job);const current=s.get(run.id);run=s.update(current,{...current.data,memory_proposals:learned.proposals},run.owner);});
           }
           else if(task.data.media_operation==='embedding_search'){
             sourceRefs(s,run.owner,stepRefs,128);
-            providerResult=await this.provider.embed({input:[task.data.search_intent.original,...step.chunks.map(c=>c.text)],maxTokens:stop.maxTokens-task.data.tokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])});
+            providerResult=await this.provider.embed({input:[task.data.search_intent.original,...step.chunks.map(c=>c.text)],maxTokens:maxOutputTokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])});
             output=JSON.stringify(step.chunks.map((c,i)=>({id:c.id,version:c.version,chunk:c.chunk,score:cosine(providerResult.vectors[0],providerResult.vectors[i+1])})));
           }
           else {
@@ -306,7 +309,7 @@ export class Runtime {
             if(step.phase!=='collaboration'&&!task.data.group_agent&&!task.data.project_id)for(const ref of run.data.memory_refs||[]){const memory=s.read(run.owner,ref.id);context.push({ref,type:'user_understanding',title:'本次可用的理解（以阶段和适用范围为准）',content:JSON.stringify({content:memory.data.content,scope:memory.data.scope,usage_purpose:memory.data.usage_purpose,alignment:memory.data.scope==='owner'?projectMemory(s,memory).data.domain_alignment[task.data.system]:projectMemory(s,memory).data.alignment,learning_mode:memory.data.learning_mode,claim_type:memory.data.claim_type})});}
             const media=stepRefs.map(ref=>s.read(run.owner,ref.id)).filter(item=>item.type==='attachment');
             const collaborationEvidence=run.data.receipts.filter(r=>r.phase==='collaboration'&&(step.phase!=='collaboration'||step.depends.includes(r.step_id))).map(r=>({role:r.role,step_id:r.step_id,output:r.output,evidence_status:'模型协作建议，需按原始来源与分歧核对'}));
-            providerResult=task.data.media_operation==='jev'?await this.provider.judge({context,intent:task.data.search_intent,maxTokens:stop.maxTokens-task.data.tokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])}):task.data.media_operation==='transcribe'?await this.provider.transcribe({bytes:Buffer.from(media[0].data.base64,'base64'),name:media[0].data.name,signal:controller.signal}):await this.provider.generate({model:run.data.version_snapshot.model||undefined,images:media.filter(item=>item.data.mime.startsWith('image/')).map(item=>'data:'+item.data.mime+';base64,'+item.data.base64),goal:{...(step.phase==='collaboration'?{goal:step.goal,parameters:step.parameter_values||{},criteria:'完成此协作目标；保留证据、异议和未知，不代其他系统确认事实'}:run.data.goal),collaboration_evidence:collaborationEvidence,phase:step.phase||'work',draft:step.phase==='review'||step.phase==='repair'?run.data.receipts.find(r=>r.step_id==='work')?.output:undefined,review:step.phase==='repair'?reviewVerdict(run.data.receipts):undefined,revision_feedback:step.phase==='collaboration'?null:run.data.plan.feedback||null},context,systemPrompt:[rolePrompt(stepSystem,step.phase),capabilityPrompt(step.phase==='collaboration'?step.capability:step.phase==='review'?run.data.version_snapshot.reviewer:run.data.version_snapshot.role,step.phase),...(step.phase==='collaboration'?[]:[run.data.version_snapshot.method?.prompt,run.data.version_snapshot.preferences?.duty,run.data.version_snapshot.preferences?.focus])].filter(Boolean).join('\n'),maxTokens:stop.maxTokens-task.data.tokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])});
+            providerResult=task.data.media_operation==='jev'?await this.provider.judge({context,intent:task.data.search_intent,maxTokens:maxOutputTokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])}):task.data.media_operation==='transcribe'?await this.provider.transcribe({bytes:Buffer.from(media[0].data.base64,'base64'),name:media[0].data.name,signal:controller.signal}):await this.provider.generate({model:run.data.version_snapshot.model||undefined,images:media.filter(item=>item.data.mime.startsWith('image/')).map(item=>'data:'+item.data.mime+';base64,'+item.data.base64),goal:{...(step.phase==='collaboration'?{goal:step.goal,parameters:step.parameter_values||{},criteria:'完成此协作目标；保留证据、异议和未知，不代其他系统确认事实'}:run.data.goal),collaboration_evidence:collaborationEvidence,phase:step.phase||'work',draft:step.phase==='review'||step.phase==='repair'?run.data.receipts.find(r=>r.step_id==='work')?.output:undefined,review:step.phase==='repair'?reviewVerdict(run.data.receipts):undefined,revision_feedback:step.phase==='collaboration'?null:run.data.plan.feedback||null},context,systemPrompt:[rolePrompt(stepSystem,step.phase),capabilityPrompt(step.phase==='collaboration'?step.capability:step.phase==='review'?run.data.version_snapshot.reviewer:run.data.version_snapshot.role,step.phase),...(step.phase==='collaboration'?[]:[run.data.version_snapshot.method?.prompt,run.data.version_snapshot.preferences?.duty,run.data.version_snapshot.preferences?.focus])].filter(Boolean).join('\n'),maxTokens:maxOutputTokens,signal:AbortSignal.any([controller.signal,AbortSignal.timeout(Math.max(1,stop.maxSeconds*1000-task.data.elapsed_ms))])});
             output=providerResult.output;
           }
         } catch (error) {
@@ -350,7 +353,14 @@ export class Runtime {
           if(waiting) break;
           batch.push(candidate); index+=1;
         }
-        await Promise.all(batch.map(candidate=>runOne(candidate)));
+        if(!batch.length){
+          // 首个步骤依赖上一批：上一批已完成就串行执行；依赖无效则由 runOne 明确报错。
+          await runOne(plan[index]);index+=1;continue;
+        }
+        // 一项失败时仍等同批调用结算完毕，避免在外部请求尚未结束时就结束整个 job。
+        const results=await Promise.allSettled(batch.map(candidate=>runOne(candidate,batch.length)));
+        const failed=results.find(result=>result.status==='rejected');
+        if(failed)throw failed.reason;
       }
       run=s.get(run.id);
       if (['cancel_requested','pause_requested'].includes(run.data.status)) {this.finish(job,run.data.status==='cancel_requested'?'cancelled':'paused');return;}

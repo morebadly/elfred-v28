@@ -14,6 +14,15 @@ test('跨系统按依赖执行，协作仅接收指定资料，主责汇总且�
  assert.equal(calls.length,4);assert.match(JSON.stringify(calls[0]),/ONLY_FIRST_SOURCE/);assert.doesNotMatch(JSON.stringify(calls[0]),/ONLY_SECOND_SOURCE/);assert.doesNotMatch(JSON.stringify(calls[1]),/ONLY_FIRST_SOURCE/);assert.equal(calls[1].goal.collaboration_evidence[0].output,'协作建议-1');assert.equal(calls[2].goal.collaboration_evidence.length,2);assert.match(calls[3].systemPrompt,/关系与协作/);
  const run=store.get(store.get(task.id).data.run_id);assert.deepEqual(run.data.plan.steps.find(s=>s.id==='work').depends,['collab-find','collab-compare']);assert.equal(resultReceipts(run.data.receipts)[0].output,'完整主责成果');
 });
+test('独立协作并发完成后才启动主责，依赖链仍顺序执行',async t=>{
+ const {store,runtime,cmd,ref}=setup(t),task=cmd('task.create',{goal:'汇总两个角度',system:'create',review_mode:'single'});
+ cmd('task.collaboration',{...ref(task),confirm:true,steps:[{id:'one',system:'explore',goal:'角度一',source_refs:[],depends:[]},{id:'two',system:'advise',goal:'角度二',source_refs:[],depends:[]}]});
+ let active=0,peak=0;const started=[];
+ runtime.provider.generate=async input=>{started.push(input.goal.phase);if(input.goal.phase==='collaboration'){active++;peak=Math.max(peak,active);await new Promise(resolve=>setTimeout(resolve,15));active--;}return {output:'已完成',usage:{total_tokens:10}};};
+ cmd('task.confirm',{...ref(task),confirm:true,model_consent:true});cmd('run.start',ref(task));await runtime.tick();
+ assert.equal(peak,2);assert.deepEqual(started,['collaboration','collaboration','work']);
+ assert.equal(store.get(store.get(task.id).data.run_id).data.receipts.length,3);
+});
 test('协作拒绝未选来源、循环依赖、越预算；转交后清除旧分工',t=>{
  const {store,cmd,ref}=setup(t),task=cmd('task.create',{goal:'草拟文稿',system:'create'}),note=cmd('knowledge.create',{title:'未选择',content:'秘密'}),step={id:'find',system:'explore',goal:'核对资料',source_refs:[],depends:[]},save=steps=>cmd('task.collaboration',{...ref(task),steps,confirm:true});
  assert.throws(()=>save([{...step,source_refs:[ref(note)]}]),{code:'CONTEXT_SCOPE'});assert.throws(()=>save([{...step,depends:['find']}]),{code:'INVALID_DEPENDENCY'});
