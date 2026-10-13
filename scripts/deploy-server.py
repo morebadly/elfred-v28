@@ -72,7 +72,14 @@ with lock_path.open("a+") as lock:
     if digest(new_lock) == digest(old_lock):
         (release / "node_modules").symlink_to((previous / "node_modules").resolve(strict=True))
     else:
-        subprocess.run(["npm", "ci", "--omit=dev"], cwd=release, check=True)
+        node_bin = pathlib.Path("/opt/node-v22.13.1-linux-x64/bin")
+        npm_cli = pathlib.Path("/opt/node-v22.13.1-linux-x64/lib/node_modules/npm/bin/npm-cli.js")
+        assert (node_bin / "node").is_file() and npm_cli.is_file(), "Server Node 22 installation is missing"
+        subprocess.run(
+            [str(node_bin / "node"), str(npm_cli), "ci", "--omit=dev"],
+            cwd=release, check=True,
+            env={**os.environ, "PATH": f"{node_bin}:{os.environ.get('PATH', '')}"},
+        )
     (release / ".env.local").symlink_to(env)
 
     backup.mkdir(parents=True)
